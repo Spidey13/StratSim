@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    env_file:
+      - .env
+    command: streamlit run web/streamlit_app.py
+    depends_on:
+      - mlflow
+
+  mlflow:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    command: mlflow ui --host 0.0.0.0
+    environment:
+      - MLFLOW_TRACKING_URI=http://localhost:5000 

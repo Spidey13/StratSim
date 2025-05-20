@@ -1,0 +1,214 @@
+F1 Data Validation Report
+==================================================
+
+Dataset Overview:
+Total rows: 68847
+Total columns: 98
+
+Schema Validation:
+
+Extra Columns:
+  - Time
+  - DriverNumber
+  - Stint
+  - PitOutTime
+  - PitInTime
+  - Sector1Time
+  - Sector2Time
+  - Sector3Time
+  - Sector1SessionTime
+  - Sector2SessionTime
+  - Sector3SessionTime
+  - SpeedI1
+  - SpeedI2
+  - SpeedFL
+  - SpeedST
+  - IsPersonalBest
+  - LapStartTime
+  - LapStartDate
+  - TrackStatus
+  - Deleted
+  - FastF1Generated
+  - IsAccurate
+  - AirTemp_Avg
+  - TrackTemp_Avg
+  - Humidity_Avg
+  - WindSpeed_Avg
+  - AirTemp_Min
+  - AirTemp_Max
+  - TrackTemp_Min
+  - TrackTemp_Max
+  - Rainfall
+  - TrackCondition
+  - AirTemp_Std
+  - TrackTemp_Std
+  - Humidity_Std
+  - WindSpeed_Std
+  - Weather_AirTemp
+  - Weather_Humidity
+  - Weather_Pressure
+  - Weather_Rainfall
+  - Weather_TrackTemp
+  - Weather_WindDirection
+  - Weather_WindSpeed
+  - YellowFlag
+  - SafetyCar
+  - VirtualSafetyCar
+  - RedFlag
+  - Circuit_Lat
+  - Circuit_Long
+  - IsSoft
+  - IsMedium
+  - IsHard
+  - IsIntermediate
+  - IsWet
+  - CompoundHardness
+  - HasPitIn
+  - HasPitOut
+  - Time_s
+  - LapTime_s
+  - Sector1Time_s
+  - Sector2Time_s
+  - Sector3Time_s
+  - Sector1SessionTime_s
+  - Sector2SessionTime_s
+  - Sector3SessionTime_s
+  - LapStartTime_s
+  - PitOutTime_s
+  - PitInTime_s
+  - LapTimeDelta
+  - StintNumber
+  - IsOutlap
+  - IsInlap
+  - SectorSum
+  - PositionChange
+  - TrackTempDelta
+  - IsRain
+  - SpeedI1_Diff
+  - SpeedI2_Diff
+  - SpeedFL_Diff
+  - SpeedST_Diff
+  - PitStopDuration
+  - PitLap
+  - StintLength
+  - TempDelta
+  - WetTrack
+  - GripLevel
+  - WeatherStability
+
+Wrong Type:
+  - LapTime (expected: <class 'float'>, got: object)
+  - Position (expected: <class 'int'>, got: float64)
+  - TyreLife (expected: <class 'float'>, got: int64)
+
+Value Validation:
+
+Out Of Range:
+  TyreLife:
+    - count: 1346
+    - min_found: 0.0
+    - max_found: 77.0
+    - expected_range: [0, 60]
+
+Invalid Categories:
+  Compound:
+    - invalid_values: ['UNKNOWN']
+    - valid_values: ['SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET']
+
+Missing Values:
+  LapTime:
+    - count: 5651
+    - percentage: 8.208055543451422
+  PitOutTime:
+    - count: 62546
+    - percentage: 90.8478219820762
+  PitInTime:
+    - count: 62533
+    - percentage: 90.82893953258674
+  Sector1Time:
+    - count: 4942
+    - percentage: 7.17823579821924
+  Sector2Time:
+    - count: 360
+    - percentage: 0.5228986012462417
+  Sector3Time:
+    - count: 1192
+    - percentage: 1.731375368570889
+  Sector1SessionTime:
+    - count: 5051
+    - percentage: 7.336557874707685
+  Sector2SessionTime:
+    - count: 360
+    - percentage: 0.5228986012462417
+  Sector3SessionTime:
+    - count: 1192
+    - percentage: 1.731375368570889
+  SpeedI1:
+    - count: 4
+    - percentage: 0.005809984458291574
+  SpeedI2:
+    - count: 4
+    - percentage: 0.005809984458291574
+  SpeedFL:
+    - count: 4
+    - percentage: 0.005809984458291574
+  SpeedST:
+    - count: 4
+    - percentage: 0.005809984458291574
+  LapStartDate:
+    - count: 48
+    - percentage: 0.06971981349949889
+  Position:
+    - count: 15675
+    - percentage: 22.767876595930105
+  LapTime_s:
+    - count: 4960
+    - percentage: 7.204380728281552
+  Sector1Time_s:
+    - count: 4002
+    - percentage: 5.81288945052072
+  Sector2Time_s:
+    - count: 356
+    - percentage: 0.51708861678795
+  Sector3Time_s:
+    - count: 1176
+    - percentage: 1.7081354307377228
+  Sector1SessionTime_s:
+    - count: 5051
+    - percentage: 7.336557874707685
+  Sector2SessionTime_s:
+    - count: 360
+    - percentage: 0.5228986012462417
+  Sector3SessionTime_s:
+    - count: 1192
+    - percentage: 1.731375368570889
+  PitOutTime_s:
+    - count: 62546
+    - percentage: 90.8478219820762
+  PitInTime_s:
+    - count: 62533
+    - percentage: 90.82893953258674
+  LapTimeDelta:
+    - count: 10690
+    - percentage: 15.52718346478423
+  PositionChange:
+    - count: 16298
+    - percentage: 23.672781675309018
+  SpeedI1_Diff:
+    - count: 1068
+    - percentage: 1.5512658503638503
+  SpeedI2_Diff:
+    - count: 1068
+    - percentage: 1.5512658503638503
+  SpeedFL_Diff:
+    - count: 1068
+    - percentage: 1.5512658503638503
+  SpeedST_Diff:
+    - count: 1068
+    - percentage: 1.5512658503638503
+  PitStopDuration:
+    - count: 68641
+    - percentage: 99.70078580039798
+
+Relationship Validation:
+  - Found 940 laps with inconsistent LapTime_s vs Sector*_s sum (difference > 0.1s)
