@@ -71,7 +71,9 @@ class RaceSimulator:
         lap_time_agent = LapTimeAgent(name="LapTimeAgent")
         # Initialize TireManagerAgent, which internally uses TireWearAgent
         tire_manager_agent = TireManagerAgent(name="TireManagerAgent")
-        weather_agent = WeatherAgent(name="WeatherAgent")
+        weather_agent = WeatherAgent(
+            name="WeatherAgent", api_key=self.config.get("weather_api_key")
+        )
         strategy_agent = StrategyAgent(name="StrategyAgent")
         vehicle_dynamics_agent = VehicleDynamicsAgent(name="VehicleDynamicsAgent")
         gap_effects_agent = GapEffectsAgent(name="GapEffectsAgent")
@@ -258,6 +260,15 @@ class RaceSimulator:
         """
         Simulate one lap of the race.
         """
+        # Process weather at the start of each lap
+        weather_input = {
+            "lap": self.current_lap,
+            "weather": self.state["weather"],
+            "circuit_id": self.circuit_name,
+        }
+        weather_output = self.agents["weather"].process(weather_input)
+        self.state["weather"] = weather_output["weather"]
+
         lap_data_for_history = {
             "lap": self.current_lap,
             "weather": self.state["weather"],

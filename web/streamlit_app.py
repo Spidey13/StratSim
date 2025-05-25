@@ -265,8 +265,14 @@ def create_simulation_config(
     selected_team,  # For backward compatibility
     selected_driver_id,  # For backward compatibility
     drivers_data=None,  # Add drivers data parameter
+    use_live_weather=False,  # Add parameter for live weather
 ):
     """Create a configuration dictionary for the race simulation."""
+    logger.debug(f"Creating simulation config with live weather: {use_live_weather}")
+    logger.debug(
+        f"Circuit: {circuit_name}, Initial weather condition: {weather_condition}"
+    )
+
     # Load driver characteristics
     driver_chars_path = os.path.join(
         project_root_path, "data", "categories", "driver_characteristics.json"
@@ -322,8 +328,9 @@ def create_simulation_config(
         "wind_speed": 5.0,  # Default wind speed
         "forecast": [],  # Empty forecast for now
     }
+    logger.debug(f"Initial weather details: {weather_details}")
 
-    return {
+    config = {
         "circuit": circuit_name,
         "weather_condition": weather_condition,  # Add this for initialization
         "weather": weather_details,  # Add detailed weather state
@@ -338,8 +345,22 @@ def create_simulation_config(
         "year": 2024,  # Current simulation year
     }
 
+    # Add weather API key if live weather is selected
+    if use_live_weather:
+        logger.debug("Adding weather API key for live weather data")
+        config["weather_api_key"] = (
+            "f931e470304ac685eca162a8a2ba25c1"  # Use key from config
+        )
+
+    logger.debug(f"Final simulation config (excluding driver details): {config}")
+    return config
+
 
 def main():
+    # Configure logging for more detailed output
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
     # Load all data at the start
     app_data = load_all_app_data()
     CIRCUIT_DATA = app_data["CIRCUIT_DATA"]
@@ -388,14 +409,38 @@ def main():
         # Use the selected event as the circuit automatically
         selected_circuit = selected_event
 
-        # Weather conditions
-        weather_condition_input = st.selectbox(
-            "Weather Condition:",
-            WEATHER_CONDITIONS,
-            index=WEATHER_CONDITIONS.index("Dry") if "Dry" in WEATHER_CONDITIONS else 0,
-            key="weather_condition",
-            help="Select the initial weather condition for the race.",
+        # Weather mode selection
+        weather_mode = st.selectbox(
+            "Weather Mode:",
+            ["Preset Weather", "Live Weather"],
+            key="weather_mode",
+            help="Choose between preset weather conditions or real-time weather data for the selected circuit.",
         )
+        logger.debug(f"Selected weather mode: {weather_mode}")
+
+        if weather_mode == "Preset Weather":
+            # Show the existing weather condition selector
+            weather_condition_input = st.selectbox(
+                "Weather Condition:",
+                WEATHER_CONDITIONS,
+                index=WEATHER_CONDITIONS.index("Dry")
+                if "Dry" in WEATHER_CONDITIONS
+                else 0,
+                key="weather_condition",
+                help="Select the initial weather condition for the race.",
+            )
+            logger.debug(
+                f"Selected preset weather condition: {weather_condition_input}"
+            )
+        else:
+            # For live weather, show info message
+            st.info(
+                "Live weather data will be fetched from the circuit's location at race start."
+            )
+            weather_condition_input = "Dry"  # Default fallback if API fails
+            logger.debug(
+                "Live weather mode selected, using 'Dry' as fallback condition"
+            )
 
         # Race length
         race_laps_input = st.number_input(
@@ -579,25 +624,50 @@ def main():
 
         with st.spinner("Running simulation..."):
             try:
-                sim_config = create_simulation_config(
-                    selected_circuit,
-                    weather_condition_input,
-                    race_laps_input,
-                    compounds_for_strategy_during_sim,
-                    selected_drivers_config,  # Pass all driver configurations
-                    selected_team,
-                    list(selected_drivers_config.keys())[
-                        0
-                    ],  # First driver for backward compatibility
-                    DRIVERS_DATA,  # Pass drivers data
+                # Create simulation configuration
+                logger.debug(
+                    f"Creating simulation config for circuit: {selected_circuit}"
+                )
+                logger.debug(
+                    f"Weather mode: {weather_mode}, Initial condition: {weather_condition_input}"
+                )
+
+                simulation_config = create_simulation_config(
+                    circuit_name=selected_circuit,
+                    weather_condition=weather_condition_input,
+                    race_laps=race_laps_input,
+                    available_compounds=compounds_for_strategy_during_sim,
+                    selected_drivers_config=selected_drivers_config,
+                    selected_team=None,  # Not needed with new multi-driver setup
+                    selected_driver_id=None,  # Not needed with new multi-driver setup
+                    drivers_data=DRIVERS_DATA,  # Pass drivers data
+                    use_live_weather=(
+                        weather_mode == "Live Weather"
+                    ),  # Pass live weather flag
                 )
 
                 # Log the configuration for debugging
-                logger.debug(f"Simulation config: {sim_config}")
+                logger.debug("Simulation configuration created successfully")
+                logger.debug(
+                    f"Weather configuration: {simulation_config.get('weather', {})}"
+                )
+                logger.debug(f"Using live weather: {weather_mode == 'Live Weather'}")
+                if weather_mode == "Live Weather":
+                    logger.debug(
+                        f"API key present: {'weather_api_key' in simulation_config}"
+                    )
 
-                simulator = RaceSimulator(sim_config)
+                simulator = RaceSimulator(simulation_config)
+                logger.debug("Starting simulation run")
                 race_history = simulator.run_simulation()
                 results = simulator.get_results()  # Store simulation results
+
+                # Log weather results
+                logger.debug("Simulation completed, checking weather data")
+                if results and "weather_summary" in results:
+                    logger.debug(
+                        f"Final weather conditions: {results['weather_summary']}"
+                    )
 
                 if not race_history:
                     st.error(

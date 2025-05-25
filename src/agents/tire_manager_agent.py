@@ -136,46 +136,46 @@ class TireManagerAgent(BaseAgent):
                 else:
                     return str(obj)  # Convert any other types to strings
 
-            debug_info = {
-                "lap_info": {
-                    "lap_number": inputs.get("current_lap", 0),
-                    "stint_lap": self.state["tire_age"],
-                    "compound": self.state["current_compound"],
-                },
-                "wear_factors": {
-                    "raw_degradation_s": float(degradation_s),  # Ensure float
-                    "wear_increment_pct": float(wear_increment),  # Ensure float
-                    "total_wear_pct": float(self.state["tire_wear"]),  # Ensure float
-                },
-                "grip_factors": make_serializable(grip_result),
-                "compound_specific": {
-                    "cliff_point": float(
-                        self.cliff_points.get(
-                            self.state["current_compound"], self.default_cliff_point
-                        )
-                    ),
-                    "max_degradation_s": float(
-                        self.total_degradation_s_for_100_percent_wear.get(
-                            self.state["current_compound"],
-                            self.default_total_degradation_s_for_100_wear,
-                        )
-                    ),
-                },
-                "model_factors": make_serializable(wear_result.get("wear_factors", {})),
-                "weather_impact": make_serializable(inputs.get("weather", {})),
-                "speed_metrics": {
-                    "SpeedST": float(inputs.get("SpeedST", 0)),
-                    "SpeedI1": float(inputs.get("SpeedI1", 0)),
-                    "SpeedI2": float(inputs.get("SpeedI2", 0)),
-                },
-            }
+            # debug_info = {
+            #     "lap_info": {
+            #         "lap_number": inputs.get("current_lap", 0),
+            #         "stint_lap": self.state["tire_age"],
+            #         "compound": self.state["current_compound"],
+            #     },
+            #     "wear_factors": {
+            #         "raw_degradation_s": float(degradation_s),  # Ensure float
+            #         "wear_increment_pct": float(wear_increment),  # Ensure float
+            #         "total_wear_pct": float(self.state["tire_wear"]),  # Ensure float
+            #     },
+            #     "grip_factors": make_serializable(grip_result),
+            #     "compound_specific": {
+            #         "cliff_point": float(
+            #             self.cliff_points.get(
+            #                 self.state["current_compound"], self.default_cliff_point
+            #             )
+            #         ),
+            #         "max_degradation_s": float(
+            #             self.total_degradation_s_for_100_percent_wear.get(
+            #                 self.state["current_compound"],
+            #                 self.default_total_degradation_s_for_100_wear,
+            #             )
+            #         ),
+            #     },
+            #     "model_factors": make_serializable(wear_result.get("wear_factors", {})),
+            #     "weather_impact": make_serializable(inputs.get("weather", {})),
+            #     "speed_metrics": {
+            #         "SpeedST": float(inputs.get("SpeedST", 0)),
+            #         "SpeedI1": float(inputs.get("SpeedI1", 0)),
+            #         "SpeedI2": float(inputs.get("SpeedI2", 0)),
+            #     },
+            # }
 
-            try:
-                logger.debug(f"Tire Analysis:\n{json.dumps(debug_info, indent=2)}")
-            except TypeError as e:
-                logger.error(f"Failed to serialize debug info: {e}")
-                # Log raw string representation as fallback
-                logger.debug(f"Tire Analysis (raw):\n{str(debug_info)}")
+            # try:
+            #     logger.debug(f"Tire Analysis:\n{json.dumps(debug_info, indent=2)}")
+            # except TypeError as e:
+            #     logger.error(f"Failed to serialize debug info: {e}")
+            #     # Log raw string representation as fallback
+            #     logger.debug(f"Tire Analysis (raw):\n{str(debug_info)}")
 
     def _calculate_wear_from_degradation(
         self,

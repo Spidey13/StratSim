@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import logging
 import json
+import requests
 from datetime import datetime, timedelta
 
 from .base_agent import BaseAgent
@@ -33,6 +34,7 @@ class WeatherAgent(BaseAgent):
         """
         super().__init__(name)
         self.api_key = api_key
+        self.initial_weather = None  # Store initial weather data
 
         # Weather condition mapping
         self.condition_map = {"Dry": 0, "Light Rain": 1, "Heavy Rain": 3, "Variable": 2}
@@ -48,6 +50,7 @@ class WeatherAgent(BaseAgent):
             inputs: Dictionary containing:
                 - lap: Current lap number
                 - weather: Weather data
+                - circuit_id: Circuit identifier
 
         Returns:
             Dictionary containing:
@@ -56,34 +59,47 @@ class WeatherAgent(BaseAgent):
                 - alerts: Any weather alerts or significant changes
         """
         lap = inputs.get("lap", 0)
-        # Correctly access nested weather data
         current_weather_data_source = inputs.get("weather", {})
-        current_weather = (
-            current_weather_data_source  # This will be the actual weather dict
-        )
+        current_weather = current_weather_data_source
         forecast = current_weather_data_source.get("forecast", [])
 
         # Store weather history
-        if current_weather:  # Check if current_weather is not empty
+        if current_weather:
             self.weather_history.append({"lap": lap, "weather": current_weather})
 
-        # Get real-time weather update if API key is available
-        if self.api_key and "circuit_id" in inputs:
+        # Get real-time weather only once at the start of simulation
+        if (
+            self.api_key
+            and "circuit_id" in inputs
+            and lap == 1
+            and not self.initial_weather
+        ):
+            logger.info(f"Initializing live weather data for {inputs['circuit_id']}")
             try:
-                live_weather = self._get_live_weather(inputs["circuit_id"])
-                if live_weather:
-                    # Merge live data with current weather
+                self.initial_weather = self._get_live_weather(inputs["circuit_id"])
+                if self.initial_weather:
+                    logger.info("Successfully initialized live weather data")
                     updated_weather = self._merge_weather_data(
-                        current_weather, live_weather
+                        current_weather, self.initial_weather
                     )
                 else:
+                    logger.warning(
+                        "Failed to get live weather, using default conditions"
+                    )
                     updated_weather = current_weather
             except Exception as e:
-                logger.error(f"Failed to get live weather: {str(e)}")
+                logger.error(f"Failed to get initial live weather: {str(e)}")
                 updated_weather = current_weather
         else:
-            # Use forecast data for this lap
-            updated_weather = self._get_forecast_for_lap(lap, current_weather, forecast)
+            # Use stored weather data for subsequent laps
+            if self.initial_weather and lap > 1:
+                updated_weather = self._merge_weather_data(
+                    current_weather, self.initial_weather
+                )
+            else:
+                updated_weather = self._get_forecast_for_lap(
+                    lap, current_weather, forecast
+                )
 
         # Calculate weather trends
         trends = self._calculate_trends()
@@ -96,7 +112,6 @@ class WeatherAgent(BaseAgent):
     def _get_live_weather(self, circuit_id: str) -> Dict[str, Any]:
         """
         Get live weather data from API for a circuit.
-        Note: This is a placeholder that would be implemented with actual API calls.
 
         Args:
             circuit_id: Circuit identifier
@@ -104,20 +119,66 @@ class WeatherAgent(BaseAgent):
         Returns:
             Weather data dictionary
         """
-        # Circuit coordinates (placeholder)
-        circuit_coords = {
-            "monza": {"lat": 45.6156, "lon": 9.2811},
-            "monaco": {"lat": 43.7347, "lon": 7.4205},
-            "silverstone": {"lat": 52.0786, "lon": -1.0169},
-            "spa": {"lat": 50.4372, "lon": 5.9714},
-            "singapore": {"lat": 1.2914, "lon": 103.8644},
-        }
+        try:
+            # Load circuit coordinates from json file
+            with open("data/categories/event_location.json", "r") as f:
+                circuit_coords_data = json.load(f)
 
-        # Placeholder for API call
-        # In a real implementation, this would use requests to call the API
+            # Format circuit_id to match json keys
+            if not circuit_id.endswith("Grand Prix"):
+                circuit_id = f"{circuit_id} Grand Prix"
 
-        # Return simulated weather data
-        return {
+            # Get coordinates for the circuit
+            if circuit_id in circuit_coords_data:
+                lat, lon = circuit_coords_data[circuit_id]
+                logger.info(
+                    f"Fetching weather for {circuit_id} at coordinates: {lat}, {lon}"
+                )
+
+                # Make API call to OpenWeather
+                base_url = "https://api.openweathermap.org/data/2.5/weather"
+                params = {
+                    "lat": lat,
+                    "lon": lon,
+                    "appid": self.api_key,
+                    "units": "metric",  # Get temperature in Celsius
+                }
+
+                response = requests.get(base_url, params=params)
+                response.raise_for_status()
+                weather_data = response.json()
+
+                # Map weather condition to our format
+                weather_main = weather_data.get("weather", [{}])[0].get("main", "Clear")
+                if weather_main in ["Thunderstorm", "Heavy Rain"]:
+                    condition = "Heavy Rain"
+                elif weather_main in ["Rain", "Drizzle"]:
+                    condition = "Light Rain"
+                else:
+                    condition = "Dry"
+
+                # Return in our existing format
+                weather_result = {
+                    "condition": condition,
+                    "rainfall": self.condition_map[condition],
+                    "air_temp": weather_data.get("main", {}).get("temp", 25),
+                    "track_temp": weather_data.get("main", {}).get("temp", 25) + 10,
+                    "humidity": weather_data.get("main", {}).get("humidity", 50),
+                    "wind_speed": weather_data.get("wind", {}).get("speed", 5),
+                    "timestamp": datetime.now().isoformat(),
+                }
+                logger.info(
+                    f"Initial weather conditions: {condition}, {weather_result['air_temp']}°C"
+                )
+                return weather_result
+            else:
+                logger.warning(f"Circuit {circuit_id} not found in coordinates data")
+
+        except Exception as e:
+            logger.error(f"Failed to get live weather: {str(e)}")
+
+        # Return default values if anything fails
+        default_weather = {
             "condition": "Dry",
             "rainfall": 0,
             "air_temp": 25,
@@ -126,6 +187,7 @@ class WeatherAgent(BaseAgent):
             "wind_speed": 8,
             "timestamp": datetime.now().isoformat(),
         }
+        return default_weather
 
     def _merge_weather_data(
         self, current: Dict[str, Any], live: Dict[str, Any]

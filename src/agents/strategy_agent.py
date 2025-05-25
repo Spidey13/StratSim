@@ -135,14 +135,14 @@ class StrategyAgent(BaseAgent):
         gap_to_leader = driver_state.get("gap_to_leader", 0.0)
 
         # Debug position data
-        logger.debug(
-            f"\nPosition data for {driver_id} at lap {lap}:"
-            f"\n  Track positions: {track_positions}"
-            f"\n  Current position: P{current_position}"
-            f"\n  Gap ahead: {gap_ahead:.1f}s"
-            f"\n  Gap to leader: {gap_to_leader:.1f}s"
-            f"\n  Total race time: {driver_state.get('total_race_time', 0.0):.3f}s"
-        )
+        # logger.debug(
+        #     f"\nPosition data for {driver_id} at lap {lap}:"
+        #     f"\n  Track positions: {track_positions}"
+        #     f"\n  Current position: P{current_position}"
+        #     f"\n  Gap ahead: {gap_ahead:.1f}s"
+        #     f"\n  Gap to leader: {gap_to_leader:.1f}s"
+        #     f"\n  Total race time: {driver_state.get('total_race_time', 0.0):.3f}s"
+        # )
 
         # Get driver characteristics
         tire_management = driver_chars.get("tire_management", 1.0)
@@ -150,18 +150,18 @@ class StrategyAgent(BaseAgent):
         consistency = driver_chars.get("consistency", 1.0)
 
         # Log initial state
-        logger.debug(
-            f"\nStrategy evaluation for {driver_id} at lap {lap}/{total_laps}:"
-            f"\n  Position: P{driver_state.get('position', '?')}"
-            f"\n  Grid Position: P{driver_state.get('grid_position', '?')}"
-            f"\n  Positions Gained: {driver_state.get('positions_gained', 0)}"
-            f"\n  Gap to Leader: {driver_state.get('gap_to_leader', 0):.1f}s"
-            f"\n  Gap to Ahead: {driver_state.get('gap_to_ahead', 0):.1f}s"
-            f"\n  Current Compound: {driver_state.get('current_compound', 'UNKNOWN')}"
-            f"\n  Tire Age: {driver_state.get('tire_age', 0)} laps"
-            f"\n  Tire Wear: {driver_state.get('tire_wear', 0):.1f}%"
-            f"\n  Grip Level: {driver_state.get('grip_level', 1.0):.3f}"
-        )
+        # logger.debug(
+        #     f"\nStrategy evaluation for {driver_id} at lap {lap}/{total_laps}:"
+        #     f"\n  Position: P{driver_state.get('position', '?')}"
+        #     f"\n  Grid Position: P{driver_state.get('grid_position', '?')}"
+        #     f"\n  Positions Gained: {driver_state.get('positions_gained', 0)}"
+        #     f"\n  Gap to Leader: {driver_state.get('gap_to_leader', 0):.1f}s"
+        #     f"\n  Gap to Ahead: {driver_state.get('gap_to_ahead', 0):.1f}s"
+        #     f"\n  Current Compound: {driver_state.get('current_compound', 'UNKNOWN')}"
+        #     f"\n  Tire Age: {driver_state.get('tire_age', 0)} laps"
+        #     f"\n  Tire Wear: {driver_state.get('tire_wear', 0):.1f}%"
+        #     f"\n  Grip Level: {driver_state.get('grip_level', 1.0):.3f}"
+        # )
 
         # Adjust thresholds based on driver characteristics
         adjusted_thresholds = self._get_adjusted_thresholds(
@@ -588,14 +588,14 @@ class StrategyAgent(BaseAgent):
         position_value_multiplier = 1 + (race_progress**2) * 2
 
         # Log position-based strategy considerations
-        logger.debug(
-            f"\nStrategy position analysis:"
-            f"\n  Current Position: P{current_position}"
-            f"\n  Gap Ahead: {gap_ahead:.1f}s"
-            f"\n  Gap to Leader: {gap_to_leader:.1f}s"
-            f"\n  Positions Gained: {positions_gained}"
-            f"\n  Race Progress: {race_progress:.2%}"
-        )
+        # logger.debug(
+        #     f"\nStrategy position analysis:"
+        #     f"\n  Current Position: P{current_position}"
+        #     f"\n  Gap Ahead: {gap_ahead:.1f}s"
+        #     f"\n  Gap to Leader: {gap_to_leader:.1f}s"
+        #     f"\n  Positions Gained: {positions_gained}"
+        #     f"\n  Race Progress: {race_progress:.2%}"
+        # )
 
         # Additional position-based adjustments with logging
         original_multiplier = position_value_multiplier
@@ -754,14 +754,14 @@ class StrategyAgent(BaseAgent):
         # Final benefit calculation with variable pit stop penalty
         net_benefit = total_gain - adjusted_pit_penalty
 
-        logger.debug(
-            f"Benefit calc: Current: {current_compound} (Age: {tire_age}), New: {new_compound}. "
-            f"Track Temp: {track_temp}°C, TempFactors: C={current_temp_factor:.3f}, N={new_temp_factor:.3f}. "
-            f"WearEffect: {wear_effect:.3f}, PerLapGain: {per_lap_gain:.3f}s. "
-            f"Position: P{current_position}, GapAhead: {gap_ahead:.1f}s, Gained: {positions_gained}, "
-            f"RaceProgress: {race_progress:.2f}, PositionMultiplier: {position_value_multiplier:.2f}, "
-            f"TotalGain: {total_gain:.3f}s, AdjustedPitPenalty: {adjusted_pit_penalty:.1f}s, NetBenefit: {net_benefit:.3f}s"
-        )
+        # logger.debug(
+        #     f"Benefit calc: Current: {current_compound} (Age: {tire_age}), New: {new_compound}. "
+        #     f"Track Temp: {track_temp}°C, TempFactors: C={current_temp_factor:.3f}, N={new_temp_factor:.3f}. "
+        #     f"WearEffect: {wear_effect:.3f}, PerLapGain: {per_lap_gain:.3f}s. "
+        #     f"Position: P{current_position}, GapAhead: {gap_ahead:.1f}s, Gained: {positions_gained}, "
+        #     f"RaceProgress: {race_progress:.2f}, PositionMultiplier: {position_value_multiplier:.2f}, "
+        #     f"TotalGain: {total_gain:.3f}s, AdjustedPitPenalty: {adjusted_pit_penalty:.1f}s, NetBenefit: {net_benefit:.3f}s"
+        # )
 
         return net_benefit
 
@@ -787,12 +787,12 @@ class StrategyAgent(BaseAgent):
             raw_position,
         )
 
-        logger.debug(
-            f"\nPosition calculation in strategic stop:"
-            f"\n  Raw position from state: {raw_position}"
-            f"\n  Calculated from track: {calculated_position}"
-            f"\n  Track position data: {track_positions}"
-        )
+        # logger.debug(
+        #     f"\nPosition calculation in strategic stop:"
+        #     f"\n  Raw position from state: {raw_position}"
+        #     f"\n  Calculated from track: {calculated_position}"
+        #     f"\n  Track position data: {track_positions}"
+        # )
 
         # Get driver characteristics and state
         driver_chars = driver_state.get("characteristics", {})
@@ -809,15 +809,15 @@ class StrategyAgent(BaseAgent):
         pit_stops = driver_state.get("pit_stops", [])
 
         # Log strategic stop evaluation
-        logger.debug(
-            f"\nEvaluating strategic stop:"
-            f"\n  Position: P{current_position}"
-            f"\n  Gap Ahead: {gap_ahead:.1f}s"
-            f"\n  Tire Age: {tire_age} laps"
-            f"\n  Tire Wear: {tire_wear:.1f}%"
-            f"\n  Compound: {current_compound}"
-            f"\n  Lap: {lap}/{total_laps}"
-        )
+        # logger.debug(
+        #     f"\nEvaluating strategic stop:"
+        #     f"\n  Position: P{current_position}"
+        #     f"\n  Gap Ahead: {gap_ahead:.1f}s"
+        #     f"\n  Tire Age: {tire_age} laps"
+        #     f"\n  Tire Wear: {tire_wear:.1f}%"
+        #     f"\n  Compound: {current_compound}"
+        #     f"\n  Lap: {lap}/{total_laps}"
+        # )
 
         # Calculate base stint length based on compound
         base_stint_length = self.base_tire_life.get(current_compound, 25)
