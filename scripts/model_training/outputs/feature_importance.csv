@@ -1,0 +1,32 @@
+Feature,Importance
+Event_Belgian Grand Prix,0.30875
+Event_Austrian Grand Prix,0.17505452
+Event_Italian Grand Prix,0.05742212
+Event_United States Grand Prix,0.050540227
+Event_Dutch Grand Prix,0.038630527
+Event_Emilia Romagna Grand Prix,0.03610967
+Humidity_Avg,0.034743376
+Event_Azerbaijan Grand Prix,0.034454267
+Event_Saudi Arabian Grand Prix,0.02785162
+Event_Bahrain Grand Prix,0.026359707
+Event_São Paulo Grand Prix,0.020784691
+AirTemp_Avg,0.020553773
+Rainfall,0.017577404
+Event_Mexico City Grand Prix,0.017541002
+Event_Chinese Grand Prix,0.016619073
+Event_Canadian Grand Prix,0.016074304
+Event_Japanese Grand Prix,0.015168683
+Event_Miami Grand Prix,0.0124220755
+TrackTemp_Avg,0.012317296
+Event_Hungarian Grand Prix,0.01166784
+Event_Abu Dhabi Grand Prix,0.009013795
+Event_Spanish Grand Prix,0.008942321
+Event_Pre-Season Testing,0.0076749907
+Event_British Grand Prix,0.0070927073
+Event_Las Vegas Grand Prix,0.0052086217
+Event_Qatar Grand Prix,0.0043222937
+CompoundHardness,0.0031593037
+TyreLife,0.001510553
+Event_Monaco Grand Prix,0.0011996602
+Event_Australian Grand Prix,0.0007509404
+Event_Singapore Grand Prix,0.00048262987

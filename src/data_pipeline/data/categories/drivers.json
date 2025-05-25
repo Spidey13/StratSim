@@ -1,0 +1,218 @@
+{
+    "ALB": {
+        "teams": [
+            "Williams"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "ALO": {
+        "teams": [
+            "Aston Martin"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "BEA": {
+        "teams": [
+            "Ferrari"
+        ],
+        "years": [
+            2024
+        ]
+    },
+    "BOT": {
+        "teams": [
+            "Alfa Romeo",
+            "Kick Sauber"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "COL": {
+        "teams": [
+            "Williams"
+        ],
+        "years": [
+            2024
+        ]
+    },
+    "DEV": {
+        "teams": [
+            "AlphaTauri"
+        ],
+        "years": [
+            2023
+        ]
+    },
+    "GAS": {
+        "teams": [
+            "Alpine"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "HAM": {
+        "teams": [
+            "Mercedes"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "HUL": {
+        "teams": [
+            "Haas F1 Team"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "LAW": {
+        "teams": [
+            "AlphaTauri"
+        ],
+        "years": [
+            2023
+        ]
+    },
+    "LEC": {
+        "teams": [
+            "Ferrari"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "MAG": {
+        "teams": [
+            "Haas F1 Team"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "NOR": {
+        "teams": [
+            "McLaren"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "OCO": {
+        "teams": [
+            "Alpine"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "PER": {
+        "teams": [
+            "Red Bull Racing"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "PIA": {
+        "teams": [
+            "McLaren"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "RIC": {
+        "teams": [
+            "AlphaTauri",
+            "RB"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "RUS": {
+        "teams": [
+            "Mercedes"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "SAI": {
+        "teams": [
+            "Ferrari"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "SAR": {
+        "teams": [
+            "Williams"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "STR": {
+        "teams": [
+            "Aston Martin"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "TSU": {
+        "teams": [
+            "AlphaTauri",
+            "RB"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "VER": {
+        "teams": [
+            "Red Bull Racing"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "ZHO": {
+        "teams": [
+            "Alfa Romeo",
+            "Kick Sauber"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    }
+}

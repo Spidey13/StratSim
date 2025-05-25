@@ -1,0 +1,122 @@
+{
+    "Alfa Romeo": {
+        "drivers": [
+            "BOT",
+            "ZHO"
+        ],
+        "years": [
+            2023
+        ]
+    },
+    "AlphaTauri": {
+        "drivers": [
+            "DEV",
+            "LAW",
+            "RIC",
+            "TSU"
+        ],
+        "years": [
+            2023
+        ]
+    },
+    "Alpine": {
+        "drivers": [
+            "GAS",
+            "OCO"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "Aston Martin": {
+        "drivers": [
+            "ALO",
+            "STR"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "Ferrari": {
+        "drivers": [
+            "BEA",
+            "LEC",
+            "SAI"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "Haas F1 Team": {
+        "drivers": [
+            "HUL",
+            "MAG"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "Kick Sauber": {
+        "drivers": [
+            "BOT",
+            "ZHO"
+        ],
+        "years": [
+            2024
+        ]
+    },
+    "McLaren": {
+        "drivers": [
+            "NOR",
+            "PIA"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "Mercedes": {
+        "drivers": [
+            "HAM",
+            "RUS"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "RB": {
+        "drivers": [
+            "RIC",
+            "TSU"
+        ],
+        "years": [
+            2024
+        ]
+    },
+    "Red Bull Racing": {
+        "drivers": [
+            "PER",
+            "VER"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    },
+    "Williams": {
+        "drivers": [
+            "ALB",
+            "COL",
+            "SAR"
+        ],
+        "years": [
+            2023,
+            2024
+        ]
+    }
+}

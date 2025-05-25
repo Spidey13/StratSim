@@ -1,0 +1,68 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# FastF1 cache
+data/cache/
+
+# MLflow artifacts
+mlruns/
+
+# Docker
+.docker/
+
+# Compiled model files
+models/*.joblib
+models/*.pkl
+models/*.h5
+
+# Large data files
+data/raw/
+data/*.csv
+data/2023/
+data/2024/
+data/*.sqlite
+notebooks/data/
+# Logs
+logs/
+*.log
+
+# Environment variables\
+.env
+
+# Mac OS
+
+.DS_Store 

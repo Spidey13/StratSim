@@ -1,0 +1,705 @@
+{
+    "Abu Dhabi Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Australian Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Austrian Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Azerbaijan Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Bahrain Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Belgian Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "British Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Canadian Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Chinese Grand Prix": {
+        "years": [
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Dutch Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LAW",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Emilia Romagna Grand Prix": {
+        "years": [
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Hungarian Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Italian Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LAW",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Japanese Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LAW",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Las Vegas Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Mexico City Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Miami Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Monaco Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Pre-Season Testing": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "COL",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Qatar Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LAW",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Saudi Arabian Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BEA",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Singapore Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "COL",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LAW",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "Spanish Grand Prix": {
+        "years": [
+            2023,
+            2024
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "DEV",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "S\u00e3o Paulo Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    },
+    "United States Grand Prix": {
+        "years": [
+            2023
+        ],
+        "drivers": [
+            "ALB",
+            "ALO",
+            "BOT",
+            "GAS",
+            "HAM",
+            "HUL",
+            "LEC",
+            "MAG",
+            "NOR",
+            "OCO",
+            "PER",
+            "PIA",
+            "RIC",
+            "RUS",
+            "SAI",
+            "SAR",
+            "STR",
+            "TSU",
+            "VER",
+            "ZHO"
+        ]
+    }
+}

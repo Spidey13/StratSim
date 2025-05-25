@@ -1,0 +1,5 @@
+scenario,predicted_laptime,confidence,circuit,event,compound,tire_age,rainfall
+"Ideal conditions (new soft tires, dry)",88.29210662841797,0.95,monza,Italian Grand Prix,SOFT,0,0.0
+"Old hard tires, dry",89.3542251586914,0.95,monza,Italian Grand Prix,HARD,25,0.0
+"Medium tires, light rain",90.63003540039062,0.95,silverstone,British Grand Prix,MEDIUM,10,1.5
+"Wet tires, heavy rain",118.03799438476562,0.95,spa,Belgian Grand Prix,WET,5,4.0

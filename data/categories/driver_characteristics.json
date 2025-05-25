@@ -1,0 +1,289 @@
+{
+    "VER": {
+      "name": "Max Verstappen",
+      "characteristics": {
+        "aggression": 1.15,
+        "consistency": 1.10,
+        "risk_tolerance": 1.12,
+        "tire_management": 1.15,
+        "wet_weather": 1.10,
+        "qualifying_pace": 1.15,
+        "race_pace": 1.15,
+        "overtaking": 1.15
+      }
+    },
+    "PER": {
+      "name": "Sergio Pérez",
+      "characteristics": {
+        "aggression": 0.95,
+        "consistency": 0.90,
+        "risk_tolerance": 0.90,
+        "tire_management": 1.05,
+        "wet_weather": 0.95,
+        "qualifying_pace": 0.95,
+        "race_pace": 1.00,
+        "overtaking": 1.05
+      }
+    },
+    "HAM": {
+      "name": "Lewis Hamilton",
+      "characteristics": {
+        "aggression": 1.05,
+        "consistency": 1.15,
+        "risk_tolerance": 1.05,
+        "tire_management": 1.15,
+        "wet_weather": 1.20,
+        "qualifying_pace": 1.15,
+        "race_pace": 1.12,
+        "overtaking": 1.10
+      }
+    },
+    "RUS": {
+      "name": "George Russell",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.08,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.05,
+        "wet_weather": 1.05,
+        "qualifying_pace": 1.08,
+        "race_pace": 1.05,
+        "overtaking": 1.00
+      }
+    },
+    "LEC": {
+      "name": "Charles Leclerc",
+      "characteristics": {
+        "aggression": 1.10,
+        "consistency": 1.00,
+        "risk_tolerance": 1.10,
+        "tire_management": 1.05,
+        "wet_weather": 1.05,
+        "qualifying_pace": 1.15,
+        "race_pace": 1.05,
+        "overtaking": 1.10
+      }
+    },
+    "SAI": {
+      "name": "Carlos Sainz",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.05,
+        "risk_tolerance": 0.95,
+        "tire_management": 1.10,
+        "wet_weather": 1.05,
+        "qualifying_pace": 1.05,
+        "race_pace": 1.08,
+        "overtaking": 1.05
+      }
+    },
+    "NOR": {
+      "name": "Lando Norris",
+      "characteristics": {
+        "aggression": 1.05,
+        "consistency": 1.08,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.05,
+        "wet_weather": 1.10,
+        "qualifying_pace": 1.10,
+        "race_pace": 1.08,
+        "overtaking": 1.05
+      }
+    },
+    "PIA": {
+      "name": "Oscar Piastri",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.05,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.00,
+        "wet_weather": 1.00,
+        "qualifying_pace": 1.05,
+        "race_pace": 1.05,
+        "overtaking": 1.00
+      }
+    },
+    "ALO": {
+      "name": "Fernando Alonso",
+      "characteristics": {
+        "aggression": 1.10,
+        "consistency": 1.12,
+        "risk_tolerance": 1.08,
+        "tire_management": 1.15,
+        "wet_weather": 1.10,
+        "qualifying_pace": 1.10,
+        "race_pace": 1.12,
+        "overtaking": 1.10
+      }
+    },
+    "STR": {
+      "name": "Lance Stroll",
+      "characteristics": {
+        "aggression": 0.95,
+        "consistency": 0.92,
+        "risk_tolerance": 0.95,
+        "tire_management": 1.00,
+        "wet_weather": 1.00,
+        "qualifying_pace": 0.90,
+        "race_pace": 0.92,
+        "overtaking": 0.95
+      }
+    },
+    "BOT": {
+      "name": "Valtteri Bottas",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.05,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.05,
+        "wet_weather": 1.00,
+        "qualifying_pace": 1.05,
+        "race_pace": 1.05,
+        "overtaking": 1.00
+      }
+    },
+    "GAS": {
+      "name": "Pierre Gasly",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.05,
+        "risk_tolerance": 0.95,
+        "tire_management": 1.05,
+        "wet_weather": 1.05,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.00,
+        "overtaking": 1.00
+      }
+    },
+    "HUL": {
+      "name": "Nico Hülkenberg",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.00,
+        "risk_tolerance": 0.95,
+        "tire_management": 1.00,
+        "wet_weather": 1.05,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.00,
+        "overtaking": 0.95
+      }
+    },
+    "RIC": {
+      "name": "Daniel Ricciardo",
+      "characteristics": {
+        "aggression": 1.10,
+        "consistency": 0.95,
+        "risk_tolerance": 1.05,
+        "tire_management": 1.00,
+        "wet_weather": 1.00,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.05,
+        "overtaking": 1.10
+      }
+    },
+    "OCO": {
+      "name": "Esteban Ocon",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.05,
+        "risk_tolerance": 0.95,
+        "tire_management": 1.05,
+        "wet_weather": 1.05,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.05,
+        "overtaking": 1.00
+      }
+    },
+    "BEA": {
+      "name": "Oliver Bearman",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.00,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.00,
+        "wet_weather": 1.00,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.00,
+        "overtaking": 1.00
+      }
+    },
+    "COL": {
+      "name": "Logan Sargeant",
+      "characteristics": {
+        "aggression": 0.95,
+        "consistency": 0.95,
+        "risk_tolerance": 0.90,
+        "tire_management": 0.95,
+        "wet_weather": 0.95,
+        "qualifying_pace": 0.95,
+        "race_pace": 0.95,
+        "overtaking": 0.95
+      }
+    },
+    "DEV": {
+      "name": "Daniel Ricciardo",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 1.00,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.00,
+        "wet_weather": 1.00,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.00,
+        "overtaking": 1.00
+      }
+    },
+    "LAW": {
+      "name": "Liam Lawson",
+      "characteristics": {
+        "aggression": 1.05,
+        "consistency": 1.00,
+        "risk_tolerance": 1.00,
+        "tire_management": 1.00,
+        "wet_weather": 1.00,
+        "qualifying_pace": 1.00,
+        "race_pace": 1.00,
+        "overtaking": 1.00
+      }
+    },
+    "SAR": {
+      "name": "Logan Sargeant",
+      "characteristics": {
+        "aggression": 0.95,
+        "consistency": 0.95,
+        "risk_tolerance": 0.90,
+        "tire_management": 0.95,
+        "wet_weather": 0.95,
+        "qualifying_pace": 0.95,
+        "race_pace": 0.95,
+        "overtaking": 0.95
+      }
+    },
+    "TSU": {
+      "name": "Yuki Tsunoda",
+      "characteristics": {
+        "aggression": 1.00,
+        "consistency": 0.95,
+        "risk_tolerance": 1.00,
+        "tire_management": 0.95,
+        "wet_weather": 0.95,
+        "qualifying_pace": 0.95,
+        "race_pace": 0.95,
+        "overtaking": 1.00
+      }
+    },
+    "ZHO": {
+      "name": "Zhou Guanyu",
+      "characteristics": {
+        "aggression": 0.95,
+        "consistency": 0.95,
+        "risk_tolerance": 0.95,
+        "tire_management": 0.95,
+        "wet_weather": 0.95,
+        "qualifying_pace": 0.90,
+        "race_pace": 0.95,
+        "overtaking": 0.90
+      }
+    }
+  }
+  
