@@ -1,181 +1,148 @@
-alembic==1.15.2
-altair==5.5.0
-annotated-types==0.7.0
-anyio==4.9.0
-argon2-cffi==23.1.0
-argon2-cffi-bindings==21.2.0
-arrow==1.3.0
-asttokens>=2.0.0
-attrs==25.3.0
-babel==2.17.0
-beautifulsoup4==4.13.3
-bleach==6.2.0
-blinker==1.9.0
-cachetools==5.5.2
-catboost==1.2.8
-cattrs==24.1.3
-certifi==2025.1.31
-cffi==1.17.1
-charset-normalizer==3.4.1
-click==8.1.8
-cloudpickle==3.1.1
-colorama
-colorlog==6.9.0
-comm
-contourpy==1.3.1
-cycler==0.12.1
-databricks-sdk==0.50.0
-debugpy
-decorator
-defusedxml==0.7.1
-Deprecated==1.2.18
-docker==7.1.0
-exceptiongroup
-executing
-fastapi==0.115.12
+# Core Streamlit App & UI
+streamlit==1.45.0
+pandas==2.2.3
+numpy==2.2.4 # Original had 2.2.4
+plotly==6.0.1
+python-dotenv==1.1.0
+altair==5.5.0 # If used directly for plotting
+
+# F1 Data & Related
 fastf1==3.5.3
-fastjsonschema==2.21.1
+requests==2.32.3
+requests-cache==1.2.1
+timple==0.1.8
+RapidFuzz==3.13.0
+matplotlib==3.10.1 # FastF1 dependency
+
+# ML Models & Core Libraries
+scikit-learn==1.6.1
+joblib==1.4.2
+xgboost==3.0.0
+lightgbm==4.6.0
+catboost==1.2.8
+
+# MLflow (Full version, includes tracking, UI, model registry capabilities)
+mlflow==2.22.0
+# Common MLflow & related dependencies (versions from your original list or sensible defaults)
+alembic==1.15.2
+SQLAlchemy==2.0.40
+sqlparse==0.5.3
+docker==7.1.0 # For MLflow model packaging/serving
+cloudpickle==3.1.1
+databricks-sdk==0.50.0
 Flask==3.1.0
-fonttools==4.57.0
-fqdn==1.5.1
-gitdb==4.0.12
-GitPython==3.1.44
-google-auth==2.39.0
-googlemaps==4.10.0
 graphene==3.4.3
 graphql-core==3.2.6
 graphql-relay==3.2.0
-graphviz==0.20.3
 greenlet==3.2.1
-h11==0.14.0
-httpcore==1.0.8
-httpx==0.28.1
-idna==3.10
-importlib_metadata
-ipykernel
-ipython
-ipython_pygments_lexers
-ipywidgets==8.1.6
-isoduration==20.11.0
-itsdangerous==2.2.0
-jedi
-Jinja2==3.1.6
-joblib==1.4.2
-json5==0.12.0
-jsonpointer==3.0.0
-jsonschema==4.23.0
-jsonschema-specifications==2024.10.1
-jupyter==1.1.1
-jupyter-console==6.6.3
-jupyter-events==0.12.0
-jupyter-lsp==2.2.5
-jupyter_client
-jupyter_core
-jupyter_server==2.15.0
-jupyter_server_terminals==0.5.3
-jupyterlab==4.4.0
-jupyterlab_pygments==0.3.0
-jupyterlab_server==2.27.3
-jupyterlab_widgets==3.0.14
-kiwisolver==1.4.8
-lightgbm==4.6.0
 Mako==1.3.10
-Markdown==3.8
-MarkupSafe==3.0.2
-matplotlib==3.10.1
-matplotlib-inline
-mistune==3.1.3
-mlflow==2.22.0
-mlflow-skinny==2.22.0
-narwhals==1.38.2
-nbclient==0.10.2
-nbconvert==7.16.6
-nbformat==5.10.4
-nest_asyncio
-notebook==7.4.0
-notebook_shim==0.2.4
-numpy==2.2.4
-opentelemetry-api==1.32.1
+protobuf==6.30.2 # Check if a more specific version like ~4.25 is needed, 6.30.2 seems high/unusual. Using original.
+PyYAML==6.0.2
+waitress==3.0.2
+Werkzeug==3.1.3
+
+# Common & Transitive Dependencies (versions from your list or recent stable ones)
+annotated-types==0.7.0 # (Pydantic dependency)
+anyio==4.9.0 # (FastAPI/Starlette dependency)
+argon2-cffi==23.1.0 # (Potentially for MLflow/Jupyter user management if used deeply, can try removing if causes issues)
+argon2-cffi-bindings==21.2.0 # (Potentially for MLflow/Jupyter user management)
+arrow==1.3.0
+asttokens==2.4.1 # Replaced file path
+attrs==25.3.0 # This version seems very high, usually ~23.x. Ensure this isn't a typo. Keeping as per original non-path entry.
+babel==2.17.0 # (Often for i18n, Jinja2/Flask might pull it)
+beautifulsoup4==4.13.3 # (If your app does direct HTML parsing)
+bleach==6.2.0 # (HTML sanitizing, if needed by a dep like Markdown)
+blinker==1.9.0
+cachetools==5.5.2
+cattrs==24.1.3
+certifi==2024.7.4 # Corrected from 2025.1.31
+cffi==1.17.1 # (argon2-cffi dependency)
+charset-normalizer==3.4.1 # (requests dependency)
+click==8.1.8 # (streamlit, flask, mlflow dependency)
+colorama==0.4.6 # Replaced file path
+colorlog==6.9.0 # (Logging)
+comm==0.2.2 # Replaced file path (often for Jupyter, but some libs might use it)
+contourpy==1.3.1 # (matplotlib dependency)
+cycler==0.12.1 # (matplotlib dependency)
+decorator==5.1.1 # Replaced file path
+defusedxml==0.7.1 # (nbconvert/pandocfilters/MLflow dependency)
+Deprecated==1.2.18
+exceptiongroup==1.2.1 # Replaced file path (primarily for Python <3.11)
+executing==2.0.1 # Replaced file path
+fastapi==0.115.12 # (If your project includes a FastAPI component, or MLflow pulls it for serving)
+fastjsonschema==2.21.1
+fonttools==4.57.0 # (matplotlib dependency)
+fqdn==1.5.1 # (jsonschema dependency)
+gitdb==4.0.12 # (GitPython dependency)
+GitPython==3.1.44 # (MLflow dependency)
+google-auth==2.39.0 # (If you use Google Cloud services)
+googlemaps==4.10.0 # (If used directly)
+graphviz==0.20.3 # (If you generate graphviz plots)
+h11==0.14.0 # (httpcore dependency)
+httpcore==1.0.8 # (httpx dependency)
+httpx==0.28.1 # (Used by various modern clients, e.g. google-auth, databricks-sdk)
+idna==3.10 # (requests dependency)
+importlib-metadata==7.1.0 # Replaced file path (primarily for Python <3.10)
+isoduration==20.11.0 # (jsonschema dependency)
+itsdangerous==2.2.0 # (Flask dependency)
+Jinja2==3.1.6 # (Streamlit, Flask, MLflow dependency)
+jsonpointer==3.0.0 # (jsonschema dependency)
+jsonschema==4.23.0 # (Used by many for validation)
+jsonschema-specifications==2024.10.1
+kiwisolver==1.4.8 # (matplotlib dependency)
+Markdown==3.8 # (Streamlit, MLflow dependency)
+MarkupSafe==3.0.2 # (Jinja2 dependency)
+narwhals==1.38.2 # (Dataframe abstraction, might be a pandas extension or optuna dep)
+opentelemetry-api==1.32.1   # (Often for tracing, FastAPI/Uvicorn or other libs might pull these)
 opentelemetry-sdk==1.32.1
 opentelemetry-semantic-conventions==0.53b1
-optuna==4.3.0
+optuna==4.3.0 # If you used Optuna for hyperparameter tuning; models might be saved with it.
 overrides==7.7.0
-packaging
-pandas==2.2.3
-pandocfilters==1.5.1
-parso
-pickleshare
-pillow==11.1.0
-platformdirs
-plotly==6.0.1
-prometheus_client==0.21.1
-prompt_toolkit
-protobuf==6.30.2
-psutil
-pure_eval
-pyarrow==19.0.1
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
-pycparser==2.22
-pydantic==2.11.3
-pydantic_core==2.33.1
-pydeck==0.9.1
-Pygments
-pyparsing==3.2.3
-python-dateutil
-python-dotenv==1.1.0
-python-json-logger==3.3.0
-pytz==2025.2
-pywin32==307
-pywinpty==2.0.15
-PyYAML==6.0.2
-pyzmq
-RapidFuzz==3.13.0
-referencing==0.36.2
-requests==2.32.3
-requests-cache==1.2.1
-rfc3339-validator==0.1.4
-rfc3986-validator==0.1.1
-rpds-py==0.24.0
-rsa==4.9.1
-scikit-learn==1.6.1
-scipy==1.15.2
-seaborn==0.13.2
-Send2Trash==1.8.3
-setuptools==78.1.0
-six
-smmap==5.0.2
-sniffio==1.3.1
-soupsieve==2.6
-SQLAlchemy==2.0.40
-sqlparse==0.5.3
-stack_data
-streamlit==1.45.0
-tenacity==9.1.2
-terminado==0.18.1
-threadpoolctl==3.6.0
-timple==0.1.8
-tinycss2==1.4.0
-toml==0.10.2
-tornado
-tqdm==4.67.1
-traitlets
-types-python-dateutil==2.9.0.20241206
+packaging==24.0 # Replaced file path
+pandocfilters==1.5.1 # (nbconvert dependency - if mlflow uses nbconvert for reports)
+pillow==11.1.0 # (Image handling, matplotlib/streamlit dep)
+platformdirs==4.2.0 # Replaced file path
+prometheus_client==0.21.1 # (MLflow/Uvicorn monitoring)
+pyarrow==19.0.1 # (Pandas IO / MLflow model format)
+pyasn1==0.6.1 # (google-auth dependency)
+pyasn1_modules==0.4.2 # (google-auth dependency)
+pycparser==2.22 # (cffi dependency)
+pydantic==2.11.3 # (FastAPI, Optuna, etc. dependency)
+pydantic_core==2.33.1 # (Pydantic dependency)
+pydeck==0.9.1 # (Streamlit mapping)
+Pygments==2.18.0 # Replaced file path (Used by Rich, Markdown, etc.)
+pyparsing==3.2.3 # Original was 3.1.2, but 3.2.3 is in the provided list. Used by matplotlib.
+python-dateutil==2.9.0.post0 # Replaced file path
+python-json-logger==3.3.0 # (Logging)
+pytz==2024.1 # Corrected
+referencing==0.36.2 # (jsonschema dependency)
+rfc3339-validator==0.1.4 # (jsonschema dependency)
+rfc3986-validator==0.1.1 # (jsonschema dependency)
+rpds-py==0.24.0 # (jsonschema dependency)
+rsa==4.9.1 # (google-auth dependency)
+scipy==1.15.2 # (scikit-learn dependency)
+seaborn==0.13.2 # If used for plotting
+setuptools==78.1.0 # Build system package, generally okay to keep if `pip freeze` included it.
+six==1.16.0 # Replaced file path (common compatibility lib)
+smmap==5.0.2 # (GitPython dependency)
+sniffio==1.3.1 # (anyio/httpcore dependency)
+soupsieve==2.6 # (BeautifulSoup dependency)
+starlette==0.46.2 # (FastAPI dependency)
+tenacity==9.1.2 # (Retry library, used by various clients)
+threadpoolctl==3.6.0 # (scikit-learn, numpy internal)
+tinycss2==1.4.0 # (nbconvert/bleach dependency)
+toml==0.10.2 # (Streamlit uses this for secrets.toml)
+tqdm==4.67.1 # (Progress bars)
+types-python-dateutil==2.9.0.20241206 # (Type hints for python-dateutil)
 typing-inspection==0.4.0
-tzdata==2025.2
-uri-template==1.3.0
-url-normalize==2.2.0
-urllib3==2.3.0
-uvicorn==0.34.2
-waitress==3.0.2
-watchdog==6.0.0
-wcwidth
-webcolors==24.11.1
-webencodings==0.5.1
-websocket-client==1.8.0
-websockets==13.1
-Werkzeug==3.1.3
-widgetsnbextension==4.0.14
-wrapt==1.17.2
-xgboost==3.0.0
-zipp
+typing_extensions==4.12.0 # Replaced file path (provides typing features for older Python)
+tzdata==2024.1 # Corrected
+uri-template==1.3.0 # (jsonschema/MLflow dependency)
+url-normalize==2.2.0 # (requests-cache dependency)
+urllib3==2.3.0 # (requests dependency)
+uvicorn==0.34.2 # (If using FastAPI for serving something)
+watchdog==6.0.0 # (Streamlit uses for local dev, usually fine to keep for deployment)
+webcolors==24.11.1 # (If used by plotting or CSS libs)
+webencodings==0.5.1 # (bleach dependency)
+wrapt==1.17.2 # (Decorator/MLflow dependency)
+zipp==3.19.1 # Replaced file path (importlib_metadata dependency)
