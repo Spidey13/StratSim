@@ -53,7 +53,7 @@ class StrategyAgent(BaseAgent):
 
         # Strategy state
         self.planned_stops = {}  # Planned pit stops by driver
-        self.last_decisions = {}  # Last decision made for each driver
+        self.last_decisions = {}
 
         # Base pit stop decision thresholds
         # These will be adjusted based on driver characteristics
@@ -83,6 +83,55 @@ class StrategyAgent(BaseAgent):
             "WET": 15,
         }
 
+    def get_driver_position(
+        self, driver_id: str, track_positions: Dict[str, int]
+    ) -> int:
+        """
+        Get driver position from the authoritative track_positions data.
+
+        Args:
+            driver_id: The ID of the driver
+            track_positions: Dictionary of current track positions from RaceSimulator
+
+        Returns:
+            int: The current position of the driver (0 if unknown/invalid)
+        """
+        return track_positions.get(driver_id, 0)
+
+    def get_position_info(
+        self, driver_id: str, track_positions: Dict[str, int]
+    ) -> Tuple[int, float, float]:
+        """
+        Get comprehensive position information including gaps.
+
+        Args:
+            driver_id: The ID of the driver
+            track_positions: Dictionary of current track positions from RaceSimulator
+
+        Returns:
+            Tuple containing:
+                - Current position
+                - Gap to car ahead (seconds)
+                - Gap to leader (seconds)
+        """
+        # Get current position from track_positions
+        current_position = self.get_driver_position(driver_id, track_positions)
+
+        # Sort positions to calculate gaps
+        sorted_positions = sorted(
+            [(pos, d_id) for d_id, pos in track_positions.items()]
+        )
+        current_idx = next(
+            (i for i, (pos, d_id) in enumerate(sorted_positions) if d_id == driver_id),
+            0,
+        )
+
+        # Default gap values
+        gap_ahead = 0.0
+        gap_to_leader = 0.0
+
+        return current_position, gap_ahead, gap_to_leader
+
     def process(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process race information to make strategy decisions.
@@ -92,12 +141,10 @@ class StrategyAgent(BaseAgent):
                 - lap: Current lap number (int)
                 - total_laps: Total race laps (int)
                 - driver_id: Driver identifier (str)
-                - driver_state: Current driver state (dict), expected to contain:
-                    - 'current_compound' (str)
-                    - 'tire_age' (int)
-                    - 'pit_stops' (list) - list of dicts for pit stop history
+                - driver_state: Current driver state (dict)
                 - weather: Current weather conditions (dict)
                 - track_state: Current track conditions (dict)
+                - track_positions: Current track positions (dict)
 
         Returns:
             Dictionary containing:
@@ -115,34 +162,24 @@ class StrategyAgent(BaseAgent):
         track_state = inputs.get("track_state", {})
         pit_time_penalty = inputs.get("pit_time_penalty", 20.0)
         driver_chars = inputs.get("driver_characteristics", {})
+        track_positions = inputs.get(
+            "track_positions", {}
+        )  # Get track_positions directly from inputs
 
-        # Get accurate position data
-        track_positions = track_state.get("positions", {})
-        current_position = track_positions.get(
-            driver_id, driver_state.get("position", 1)
+        # Get accurate position data using the new method
+        current_position, gap_ahead, gap_to_leader = self.get_position_info(
+            driver_id, track_positions
         )
-
-        # Calculate gaps using track_positions
-        sorted_positions = sorted(
-            [(pos, d_id) for d_id, pos in track_positions.items()]
-        )
-        current_idx = next(
-            (i for i, (pos, d_id) in enumerate(sorted_positions) if d_id == driver_id),
-            0,
-        )
-
-        gap_ahead = driver_state.get("gap_to_ahead", 0.0)
-        gap_to_leader = driver_state.get("gap_to_leader", 0.0)
 
         # Debug position data
-        # logger.debug(
-        #     f"\nPosition data for {driver_id} at lap {lap}:"
-        #     f"\n  Track positions: {track_positions}"
-        #     f"\n  Current position: P{current_position}"
-        #     f"\n  Gap ahead: {gap_ahead:.1f}s"
-        #     f"\n  Gap to leader: {gap_to_leader:.1f}s"
-        #     f"\n  Total race time: {driver_state.get('total_race_time', 0.0):.3f}s"
-        # )
+        logger.debug(
+            f"\nPosition data for {driver_id} at lap {lap}:"
+            f"\n  Track positions: {track_positions}"
+            f"\n  Current position: P{current_position}"
+            f"\n  Gap ahead: {gap_ahead:.1f}s"
+            f"\n  Gap to leader: {gap_to_leader:.1f}s"
+            f"\n  Total race time: {driver_state.get('total_race_time', 0.0):.3f}s"
+        )
 
         # Get driver characteristics
         tire_management = driver_chars.get("tire_management", 1.0)
@@ -562,140 +599,54 @@ class StrategyAgent(BaseAgent):
         driver_state: Dict[str, Any],
     ) -> float:
         """
-        Calculate the expected time benefit of changing to a new compound.
-        A positive benefit means pitting is advantageous.
-
-        Args:
-            current_compound: Current tire compound
-            new_compound: New tire compound
-            tire_age: Age of the current tires
-            weather: Current weather conditions
-            pit_time_penalty: Time lost for a pit stop (e.g., 20 seconds)
-            driver_state: Current state of the driver including position info
-
-        Returns:
-            Estimated time benefit in seconds.
+        Calculate the expected benefit of changing compounds.
         """
-        # Get position and gap information
-        current_position = driver_state.get("position", 1)
-        gap_ahead = driver_state.get("gap_to_ahead", 0.0)
-        gap_to_leader = driver_state.get("gap_to_leader", 0.0)
-        positions_gained = driver_state.get("positions_gained", 0)
+        # Get position information using the new method
+        current_position, gap_ahead, gap_to_leader = self.get_position_info(
+            driver_state.get("driver_id", "unknown"), weather.get("track_positions", {})
+        )
 
-        # Calculate race progress and position multiplier
-        remaining_laps = weather.get("total_laps", 70) - weather.get("lap", 0)
-        race_progress = 1 - (remaining_laps / weather.get("total_laps", 70))
-        position_value_multiplier = 1 + (race_progress**2) * 2
+        # Calculate position value multiplier using the new method
+        position_value_multiplier = self._calculate_position_value(
+            driver_state.get("driver_id", "unknown"),
+            weather.get("track_positions", {}),
+            driver_state,
+            weather,
+        )
 
-        # Log position-based strategy considerations
-        # logger.debug(
-        #     f"\nStrategy position analysis:"
-        #     f"\n  Current Position: P{current_position}"
-        #     f"\n  Gap Ahead: {gap_ahead:.1f}s"
-        #     f"\n  Gap to Leader: {gap_to_leader:.1f}s"
-        #     f"\n  Positions Gained: {positions_gained}"
-        #     f"\n  Race Progress: {race_progress:.2%}"
-        # )
+        # Get weather conditions
+        track_temp = weather.get("track_temp", 25.0)
+        air_temp = weather.get("air_temp", 20.0)
+        rain_intensity = weather.get("rain", 0.0)
 
-        # Additional position-based adjustments with logging
-        original_multiplier = position_value_multiplier
-        if current_position == 1:
-            position_value_multiplier *= 1.5
-            logger.debug(
-                f"  Leading - Increased multiplier: {original_multiplier:.2f} -> {position_value_multiplier:.2f}"
-            )
-        elif gap_ahead < 3.0 and current_position > 1:
-            position_value_multiplier *= 0.8
-            logger.debug(
-                f"  Close to car ahead - Decreased multiplier: {original_multiplier:.2f} -> {position_value_multiplier:.2f}"
-            )
-        elif gap_ahead > 5.0 and positions_gained > 0:
-            position_value_multiplier *= 1.3
-            logger.debug(
-                f"  Clear air with positions gained - Increased multiplier: {original_multiplier:.2f} -> {position_value_multiplier:.2f}"
-            )
+        # Base lap time (example value, should be circuit specific)
+        baseline_lap_time = 80.0  # seconds
 
-        # Track-specific baseline lap time (should come from track database)
-        baseline_lap_time = 90.0
+        # Temperature impact on compounds
+        temp_impact = self._calculate_temperature_impact(
+            track_temp, air_temp, current_compound
+        )
 
-        # Compound-specific pace factors (relative to optimal)
-        # Reduced deltas between compounds for more realistic differences
-        compound_pace = {
-            "SOFT": 1.0,  # Baseline (fastest)
-            "MEDIUM": 1.005,  # 0.5% slower than soft (was 1%)
-            "HARD": 1.01,  # 1% slower than soft (was 2%)
-            "INTERMEDIATE": 1.03,  # Wet conditions
-            "WET": 1.06,  # Full wet conditions
-        }
-
-        # Tire degradation characteristics - reduced rates for more realistic behavior
+        # Compound degradation rates
         compound_deg_rates = {
-            "SOFT": 0.002,  # 0.2% per lap (was 0.4%)
-            "MEDIUM": 0.0015,  # 0.15% per lap (was 0.3%)
-            "HARD": 0.001,  # 0.1% per lap (was 0.2%)
-            "INTERMEDIATE": 0.003,
-            "WET": 0.004,
+            "SOFT": 0.002,
+            "MEDIUM": 0.0015,
+            "HARD": 0.001,
+            "INTERMEDIATE": 0.0025 if rain_intensity > 0 else 0.003,
+            "WET": 0.002 if rain_intensity > 0.5 else 0.004,
         }
 
-        # Temperature impact on compounds - more nuanced temperature windows
-        track_temp = weather.get("track_temp", 30)
-        temp_impact = {
-            "SOFT": max(
-                0, min(1.0, 1.0 - abs(track_temp - 35) * 0.008)
-            ),  # Optimal ~35°C
-            "MEDIUM": max(
-                0, min(1.0, 1.0 - abs(track_temp - 30) * 0.006)
-            ),  # Optimal ~30°C
-            "HARD": max(
-                0, min(1.0, 1.0 - abs(track_temp - 25) * 0.004)
-            ),  # Optimal ~25°C
-            "INTERMEDIATE": 1.0,  # Less temperature sensitive
-            "WET": 1.0,  # Less temperature sensitive
-        }
-
-        # Add pit stop time variation based on track position
-        base_pit_loss = pit_time_penalty
-        if current_position > 10:
-            # More traffic in the back, higher chance of losing time
-            pit_time_variation = np.random.normal(1.5, 0.5)  # Additional 1-2s loss
-        elif current_position > 5:
-            pit_time_variation = np.random.normal(0.8, 0.3)  # 0.5-1.1s variation
-        else:
-            pit_time_variation = np.random.normal(0.5, 0.2)  # 0.3-0.7s variation
-
-        adjusted_pit_penalty = base_pit_loss + pit_time_variation
-
-        # Enhanced position-based adjustments
-        position_value_multiplier = 1.0  # Base multiplier
-
-        # Front-running position effects
-        if current_position == 1:
-            if gap_ahead > 5.0:
-                position_value_multiplier = 0.9  # Conservative when leading with gap
-                logger.debug(
-                    "  Leading with comfortable gap - More conservative strategy"
-                )
-            else:
-                position_value_multiplier = 1.2  # Defensive when leading closely
-                logger.debug("  Leading but under pressure - Defensive strategy")
-        elif current_position <= 3:
-            if gap_ahead < 2.0:
-                position_value_multiplier = 1.3  # Aggressive when fighting for podium
-                logger.debug("  Podium fight - Aggressive strategy")
-
-        # Midfield position effects
-        elif current_position <= 10:
-            if gap_ahead < 1.5:
-                position_value_multiplier = 1.2  # Points-paying position battle
-                logger.debug("  Points position battle - Aggressive strategy")
-            elif gap_ahead > 4.0:
-                position_value_multiplier = 0.95  # Holding position
-                logger.debug("  Stable points position - Conservative strategy")
+        # Adjust pit penalty based on position and gaps
+        adjusted_pit_penalty = pit_time_penalty
+        if current_position == 1 and gap_ahead > 5.0:
+            adjusted_pit_penalty *= 1.1  # More conservative when leading
+        elif gap_ahead < 2.0:
+            adjusted_pit_penalty *= 0.95  # More aggressive when close to car ahead
 
         # Calculate current tire performance with more realistic degradation
         current_deg_rate = compound_deg_rates.get(current_compound, 0.0015)
-        current_base_pace = compound_pace.get(current_compound, 1.05)
-        current_temp_factor = temp_impact.get(current_compound, 1.0)
+        current_base_pace = self.compound_pace.get(current_compound, 1.05)
+        current_temp_factor = temp_impact
 
         # Non-linear degradation effect (more gradual early, steeper late)
         wear_effect = 1.0 + (current_deg_rate * tire_age) ** 1.3
@@ -707,8 +658,8 @@ class StrategyAgent(BaseAgent):
 
         # Calculate new tire performance
         new_deg_rate = compound_deg_rates.get(new_compound, 0.0015)
-        new_base_pace = compound_pace.get(new_compound, 1.05)
-        new_temp_factor = temp_impact.get(new_compound, 1.0)
+        new_base_pace = self.compound_pace.get(new_compound, 1.05)
+        new_temp_factor = temp_impact
 
         # New tires start fresh but need warm-up
         warmup_penalty = 0.3  # 0.3s slower on first lap
@@ -721,7 +672,10 @@ class StrategyAgent(BaseAgent):
 
         # Calculate stint length based on compound characteristics
         new_compound_ideal_life = self.base_tire_life.get(new_compound, 25)
-        laps_on_new_tire = min(remaining_laps, new_compound_ideal_life)
+        laps_on_new_tire = min(
+            weather.get("total_laps", 70) - weather.get("lap", 0),
+            new_compound_ideal_life,
+        )
 
         # Calculate total benefit over the stint with warm-up phase
         total_gain = 0
@@ -754,15 +708,6 @@ class StrategyAgent(BaseAgent):
         # Final benefit calculation with variable pit stop penalty
         net_benefit = total_gain - adjusted_pit_penalty
 
-        # logger.debug(
-        #     f"Benefit calc: Current: {current_compound} (Age: {tire_age}), New: {new_compound}. "
-        #     f"Track Temp: {track_temp}°C, TempFactors: C={current_temp_factor:.3f}, N={new_temp_factor:.3f}. "
-        #     f"WearEffect: {wear_effect:.3f}, PerLapGain: {per_lap_gain:.3f}s. "
-        #     f"Position: P{current_position}, GapAhead: {gap_ahead:.1f}s, Gained: {positions_gained}, "
-        #     f"RaceProgress: {race_progress:.2f}, PositionMultiplier: {position_value_multiplier:.2f}, "
-        #     f"TotalGain: {total_gain:.3f}s, AdjustedPitPenalty: {adjusted_pit_penalty:.1f}s, NetBenefit: {net_benefit:.3f}s"
-        # )
-
         return net_benefit
 
     def _should_make_strategic_stop(
@@ -775,24 +720,10 @@ class StrategyAgent(BaseAgent):
         """
         Determine if we should make a strategic pit stop.
         """
-        # Debug position calculation
-        raw_position = driver_state.get("position", 1)
-        track_positions = weather.get("track_positions", {})
-        calculated_position = next(
-            (
-                pos
-                for pos, d_id in track_positions.items()
-                if d_id == driver_state.get("driver_id")
-            ),
-            raw_position,
+        # Get position information using the new method
+        current_position, gap_ahead, gap_to_leader = self.get_position_info(
+            driver_state.get("driver_id", "unknown"), weather.get("track_positions", {})
         )
-
-        # logger.debug(
-        #     f"\nPosition calculation in strategic stop:"
-        #     f"\n  Raw position from state: {raw_position}"
-        #     f"\n  Calculated from track: {calculated_position}"
-        #     f"\n  Track position data: {track_positions}"
-        # )
 
         # Get driver characteristics and state
         driver_chars = driver_state.get("characteristics", {})
@@ -803,21 +734,15 @@ class StrategyAgent(BaseAgent):
         current_compound = driver_state.get("current_compound", "MEDIUM")
         tire_age = driver_state.get("tire_age", 0)
         tire_wear = driver_state.get("tire_wear", 0.0)
-        current_position = driver_state.get("position", 1)
-        gap_ahead = driver_state.get("gap_to_ahead", 0.0)
         grip_level = driver_state.get("grip_level", 1.0)
-        pit_stops = driver_state.get("pit_stops", [])
 
-        # Log strategic stop evaluation
-        # logger.debug(
-        #     f"\nEvaluating strategic stop:"
-        #     f"\n  Position: P{current_position}"
-        #     f"\n  Gap Ahead: {gap_ahead:.1f}s"
-        #     f"\n  Tire Age: {tire_age} laps"
-        #     f"\n  Tire Wear: {tire_wear:.1f}%"
-        #     f"\n  Compound: {current_compound}"
-        #     f"\n  Lap: {lap}/{total_laps}"
-        # )
+        # Calculate position value multiplier using the new method
+        position_value_multiplier = self._calculate_position_value(
+            driver_state.get("driver_id", "unknown"),
+            weather.get("track_positions", {}),
+            driver_state,
+            weather,
+        )
 
         # Calculate base stint length based on compound
         base_stint_length = self.base_tire_life.get(current_compound, 25)
@@ -831,7 +756,7 @@ class StrategyAgent(BaseAgent):
 
         # Calculate optimal pit windows based on race length and mandatory pit rules
         laps_remaining = total_laps - lap
-        mandatory_pit_needed = len(pit_stops) == 0
+        mandatory_pit_needed = len(driver_state.get("pit_stops", [])) == 0
 
         # Early window: 30-45% race distance
         early_window_start = int(total_laps * 0.30)
@@ -865,11 +790,6 @@ class StrategyAgent(BaseAgent):
         in_early_window = early_window_start <= lap <= early_window_end
         in_mid_window = mid_window_start <= lap <= mid_window_end
         in_late_window = late_window_start <= lap <= late_window_end
-
-        # Get position information
-        current_position = driver_state.get("position", 1)
-        gap_ahead = driver_state.get("gap_to_ahead", 0.0)
-        gap_to_leader = driver_state.get("gap_to_leader", 0.0)
 
         # Adjust strategy based on position
         if current_position == 1 and gap_to_leader > 5.0:
@@ -1020,3 +940,56 @@ class StrategyAgent(BaseAgent):
             return True, "Track position more valuable near race end"
 
         return False, "End race strategy check passed"
+
+    def _calculate_position_value(
+        self,
+        driver_id: str,
+        track_positions: Dict[str, int],
+        driver_state: Dict[str, Any],
+        weather: Dict[str, Any],
+    ) -> float:
+        """
+        Calculate the strategic value multiplier based on race position.
+        """
+        # Get position information using the new method
+        current_position, gap_ahead, gap_to_leader = self.get_position_info(
+            driver_id, track_positions
+        )
+        positions_gained = driver_state.get("positions_gained", 0)
+
+        # Calculate race progress
+        remaining_laps = weather.get("total_laps", 70) - weather.get("lap", 0)
+        race_progress = 1 - (remaining_laps / weather.get("total_laps", 70))
+        position_value_multiplier = 1 + (race_progress**2) * 2
+
+        # Position-based strategy adjustments
+        if current_position == 1:
+            if gap_ahead > 5.0:
+                position_value_multiplier = 0.9  # Conservative when leading with gap
+                logger.debug(
+                    "  Leading with comfortable gap - More conservative strategy"
+                )
+            else:
+                position_value_multiplier = 1.2  # Defensive when leading closely
+                logger.debug("  Leading but under pressure - Defensive strategy")
+        elif current_position <= 3:
+            if gap_ahead < 2.0:
+                position_value_multiplier = 1.3  # Aggressive when fighting for podium
+                logger.debug("  Podium fight - Aggressive strategy")
+        elif current_position <= 10:
+            if gap_ahead < 1.5:
+                position_value_multiplier = 1.2  # Points-paying position battle
+                logger.debug("  Points position battle - Aggressive strategy")
+            elif gap_ahead > 4.0:
+                position_value_multiplier = 0.95  # Holding position
+                logger.debug("  Stable points position - Conservative strategy")
+
+        return position_value_multiplier
+
+    def _calculate_temperature_impact(self, track_temp, air_temp, compound):
+        """
+        Calculate the temperature impact on compound performance.
+        """
+        # Implement temperature impact logic based on track_temp, air_temp, and compound
+        # This is a placeholder and should be replaced with actual implementation
+        return 1.0  # Placeholder return, actual implementation needed

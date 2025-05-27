@@ -111,8 +111,8 @@ class GripModelAgent(BaseAgent):
         track_grip = self._calculate_track_evolution(current_lap, total_laps, weather)
 
         # Calculate temperature effects
-        temp_performance = self._calculate_temperature_performance(
-            compound, tire_temp, track_temp
+        temp_performance = self._calculate_temp_performance(
+            compound, tire_temp, track_temp, driver_chars
         )
 
         # Calculate wear-based grip with high wear variations
@@ -180,122 +180,188 @@ class GripModelAgent(BaseAgent):
 
         return current_grip
 
-    def _calculate_temperature_performance(
-        self, compound: str, tire_temp: float, track_temp: float
+    def _calculate_temp_performance(
+        self,
+        compound: str,
+        tire_temp: float,
+        track_temp: float,
+        driver_chars: Dict[str, float],
     ) -> Dict[str, Any]:
         """
-        Calculate grip based on tire and track temperatures.
+        Calculate grip impact from tire temperature.
+
+        Args:
+            compound: Tire compound
+            tire_temp: Current tire temperature
+            track_temp: Track temperature
+            driver_chars: Driver characteristics
+
+        Returns:
+            Dictionary with temperature performance details
         """
-        temp_window = self.temp_windows.get(compound, self.temp_windows["MEDIUM"])
+        # Define optimal temperature windows per compound
+        optimal_temp_windows = {
+            "SOFT": (90, 110),
+            "MEDIUM": (85, 105),
+            "HARD": (80, 100),
+            "INTERMEDIATE": (65, 85),
+            "WET": (55, 75),
+        }
 
-        # Calculate distance from optimal range
-        optimal_low, optimal_high = temp_window["optimal"]
-        working_low, working_high = temp_window["working"]
+        # Get optimal range for current compound
+        optimal_range = optimal_temp_windows.get(compound, (85, 105))
+        optimal_temp = (optimal_range[0] + optimal_range[1]) / 2
+        working_range = (optimal_range[0] - 10, optimal_range[1] + 10)
 
-        # Initialize performance metrics
-        in_optimal_window = optimal_low <= tire_temp <= optimal_high
-        in_working_window = working_low <= tire_temp <= working_high
-
-        # Calculate temperature performance
-        if in_optimal_window:
+        # Calculate base grip based on temperature
+        if optimal_range[0] <= tire_temp <= optimal_range[1]:
+            # In optimal window - full grip
             temp_performance = 1.0
-        elif in_working_window:
-            # Linear falloff within working range
-            if tire_temp < optimal_low:
-                temp_performance = 0.9 + (
-                    0.1 * (tire_temp - working_low) / (optimal_low - working_low)
+            in_optimal_window = True
+            in_working_window = True
+        elif working_range[0] <= tire_temp <= working_range[1]:
+            # In working window but not optimal
+            if tire_temp < optimal_range[0]:
+                # Cold tires
+                delta = (tire_temp - working_range[0]) / (
+                    optimal_range[0] - working_range[0]
                 )
-            else:  # tire_temp > optimal_high
-                temp_performance = 0.9 + (
-                    0.1 * (working_high - tire_temp) / (working_high - optimal_high)
+                temp_performance = 0.7 + (0.3 * delta)
+            else:
+                # Hot tires
+                delta = (working_range[1] - tire_temp) / (
+                    working_range[1] - optimal_range[1]
                 )
+                temp_performance = 0.7 + (0.3 * delta)
+            in_optimal_window = False
+            in_working_window = True
         else:
-            # Severe performance drop outside working range
-            if tire_temp < working_low:
-                temp_performance = max(0.5, 0.9 * (tire_temp / working_low))
-            else:  # tire_temp > working_high
-                temp_performance = max(0.5, 0.9 * (working_high / tire_temp))
+            # Outside working window
+            if tire_temp < working_range[0]:
+                # Very cold
+                temp_performance = max(0.4, 0.7 * (tire_temp / working_range[0]))
+            else:
+                # Very hot
+                temp_performance = max(0.4, 0.7 * (working_range[1] / tire_temp))
+            in_optimal_window = False
+            in_working_window = False
 
-        # Track temperature influence
-        track_effect = 1.0
-        if track_temp < temp_window["critical_low"]:
-            track_effect = max(
-                0.7, 1.0 - (temp_window["critical_low"] - track_temp) * 0.02
-            )
-        elif track_temp > temp_window["critical_high"]:
-            track_effect = max(
-                0.7, 1.0 - (track_temp - temp_window["critical_high"]) * 0.02
+        # Track temperature effect
+        track_delta = abs(track_temp - optimal_temp)
+        track_effect = max(0.7, 1.0 - (track_delta / 100.0))
+
+        # Driver adaptability
+        consistency = driver_chars.get("consistency", 1.0)
+        tire_management = driver_chars.get("tire_management", 1.0)
+        driver_adaptation = (consistency + tire_management) / 2
+
+        # Better drivers can extract more grip from suboptimal temperatures
+        if not in_optimal_window:
+            temp_performance = temp_performance + (
+                (1.0 - temp_performance) * (driver_adaptation - 1.0) * 0.3
             )
 
-        # Combine tire and track temperature effects
+        # Calculate final grip multiplier
         grip_multiplier = temp_performance * track_effect
 
         return {
-            "grip_multiplier": grip_multiplier,
+            "grip_multiplier": float(grip_multiplier),
             "in_optimal_window": in_optimal_window,
             "in_working_window": in_working_window,
-            "temp_performance": temp_performance,
-            "track_effect": track_effect,
+            "temp_performance": float(temp_performance),
+            "track_effect": float(track_effect),
         }
 
     def _calculate_wear_grip(
         self, compound: str, wear: float, driver_chars: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Calculate grip based on tire wear with increased variation at high wear.
+        Calculate grip based on tire wear with compound-specific characteristics.
         """
         # Get driver characteristics
         consistency = driver_chars.get("consistency", 1.0)
         tire_management = driver_chars.get("tire_management", 1.0)
 
-        # Base grip loss calculation
-        if wear < self.high_wear_effects["threshold"]:
-            # Linear grip loss until threshold
-            base_grip = 1.0 - (wear / 100) * 0.8
-        else:
-            # Non-linear loss after threshold
-            base_wear_loss = self.high_wear_effects["threshold"] / 100 * 0.8
-            remaining_wear = wear - self.high_wear_effects["threshold"]
-            remaining_wear_factor = remaining_wear / (
-                100 - self.high_wear_effects["threshold"]
+        # Compound-specific characteristics
+        compound_chars = {
+            "SOFT": {
+                "initial_grip": 1.02,  # Highest peak grip
+                "wear_resistance": 0.7,  # Wears faster
+                "cliff_point": 65.0,  # Earlier cliff
+                "cliff_severity": 1.3,  # More severe drop-off
+            },
+            "MEDIUM": {
+                "initial_grip": 1.0,  # Baseline grip
+                "wear_resistance": 0.85,  # Balanced wear
+                "cliff_point": 75.0,  # Standard cliff
+                "cliff_severity": 1.1,  # Standard drop-off
+            },
+            "HARD": {
+                "initial_grip": 0.98,  # Lower peak grip
+                "wear_resistance": 1.0,  # Most wear resistant
+                "cliff_point": 85.0,  # Later cliff
+                "cliff_severity": 0.9,  # More gradual drop-off
+            },
+            "INTERMEDIATE": {
+                "initial_grip": 0.95,
+                "wear_resistance": 0.8,
+                "cliff_point": 70.0,
+                "cliff_severity": 1.2,
+            },
+            "WET": {
+                "initial_grip": 0.90,
+                "wear_resistance": 0.75,
+                "cliff_point": 60.0,
+                "cliff_severity": 1.4,
+            },
+        }
+
+        # Get compound characteristics (default to medium if unknown)
+        chars = compound_chars.get(compound, compound_chars["MEDIUM"])
+
+        # Calculate base grip loss based on wear
+        # Better tire management reduces grip loss
+        effective_wear = wear * (1.1 - (tire_management * 0.1))
+
+        if effective_wear < chars["cliff_point"] * 0.5:
+            # First half of tire life - gradual grip loss
+            base_grip_loss = (effective_wear / chars["cliff_point"]) ** (
+                1.2 * chars["wear_resistance"]
             )
-
-            # More pronounced effect after cliff point
-            if wear > self.high_wear_effects["cliff_point"]:
-                cliff_excess = wear - self.high_wear_effects["cliff_point"]
-                cliff_factor = (
-                    cliff_excess / (100 - self.high_wear_effects["cliff_point"])
-                ) ** 2
-                high_wear_loss = remaining_wear_factor * (1 + cliff_factor)
-            else:
-                high_wear_loss = remaining_wear_factor
-
-            base_grip = 1.0 - base_wear_loss - high_wear_loss
-
-        # Add wear-based variations
-        if wear > self.high_wear_effects["threshold"]:
-            # Increase variation at high wear
-            variation_scale = self.high_wear_effects["variation_scale"]
-            # Less consistent drivers have more variation
-            variation_scale *= 2 - consistency
-            # Better tire management reduces variation
-            variation_scale *= 2 - tire_management
-
-            variation = np.random.normal(0, variation_scale)
-            grip_multiplier = base_grip * (1 + variation)
+        elif effective_wear < chars["cliff_point"]:
+            # Approaching cliff - accelerating grip loss
+            progress_to_cliff = (effective_wear - (chars["cliff_point"] * 0.5)) / (
+                chars["cliff_point"] * 0.5
+            )
+            base_grip_loss = 0.5 + (progress_to_cliff * 0.3)  # More pronounced loss
         else:
-            grip_multiplier = base_grip
+            # After cliff point - severe grip loss
+            base_grip_loss = 0.8  # Significant base loss at cliff
+            excess_wear = effective_wear - chars["cliff_point"]
+            # More severe drop-off based on compound characteristics
+            cliff_loss = (excess_wear / (100 - chars["cliff_point"])) ** chars[
+                "cliff_severity"
+            ]
+            base_grip_loss += cliff_loss * 0.2  # Additional loss after cliff
 
-        # Ensure grip multiplier stays within bounds
-        grip_multiplier = max(
-            1.0 - self.high_wear_effects["max_grip_loss"], min(1.0, grip_multiplier)
-        )
+        # Calculate grip level
+        grip_level = chars["initial_grip"] * (1.0 - base_grip_loss)
+
+        # Add consistency-based variations
+        # Less consistent drivers have more grip variations
+        variation_scale = 0.02 * (2.0 - consistency)
+        variation = np.random.normal(0, variation_scale)
+        grip_level *= 1.0 + variation
+
+        # Ensure grip stays within bounds
+        grip_level = max(0.3, min(chars["initial_grip"], grip_level))
 
         return {
-            "grip_multiplier": grip_multiplier,
-            "base_grip": base_grip,
-            "high_wear_active": wear > self.high_wear_effects["threshold"],
-            "cliff_active": wear > self.high_wear_effects["cliff_point"],
+            "grip_multiplier": grip_level,
+            "base_grip_loss": base_grip_loss,
+            "high_wear_active": effective_wear > chars["cliff_point"],
+            "cliff_active": effective_wear > chars["cliff_point"],
+            "compound_characteristics": chars,
         }
 
     def get_metadata(self) -> Dict[str, Any]:

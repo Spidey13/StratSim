@@ -88,19 +88,21 @@ class TireWearAgent(BaseAgent):
 
     def _calculate_interaction_features(self, inputs_df: pd.DataFrame) -> pd.DataFrame:
         """Calculates necessary interaction features and type conversions."""
-        # Create compound indicator columns
+        # Calculate squared and cubed tire life
+        inputs_df["TyreLifeSquared"] = inputs_df["LapNumberInStint"] ** 2
+        inputs_df["TyreLifeCubed"] = inputs_df["LapNumberInStint"] ** 3
+
+        # Create compound indicator variables
         inputs_df["IsSoft"] = (inputs_df["Compound"] == "SOFT").astype(float)
         inputs_df["IsMedium"] = (inputs_df["Compound"] == "MEDIUM").astype(float)
         inputs_df["IsHard"] = (inputs_df["Compound"] == "HARD").astype(float)
-
-        # Calculate tire life polynomial features
-        inputs_df["TyreLifeSquared"] = inputs_df["LapNumberInStint"] ** 2
-        inputs_df["TyreLifeCubed"] = inputs_df["LapNumberInStint"] ** 3
 
         # Calculate interaction terms
         inputs_df["LapNumberInStint_TrackTemp_Interaction"] = (
             inputs_df["LapNumberInStint"] * inputs_df["TrackTemp_Avg"]
         )
+
+        # Compound-specific lap interactions
         inputs_df["LapNumberInStint_IsSoft_Interaction"] = (
             inputs_df["LapNumberInStint"] * inputs_df["IsSoft"]
         )
@@ -110,6 +112,8 @@ class TireWearAgent(BaseAgent):
         inputs_df["LapNumberInStint_IsHard_Interaction"] = (
             inputs_df["LapNumberInStint"] * inputs_df["IsHard"]
         )
+
+        # Track temperature compound interactions
         inputs_df["TrackTemp_Avg_IsSoft_Interaction"] = (
             inputs_df["TrackTemp_Avg"] * inputs_df["IsSoft"]
         )
@@ -119,13 +123,6 @@ class TireWearAgent(BaseAgent):
         inputs_df["TrackTemp_Avg_IsHard_Interaction"] = (
             inputs_df["TrackTemp_Avg"] * inputs_df["IsHard"]
         )
-
-        # Ensure all numeric columns are float
-        for col in NUMERICAL_FEATURES:
-            if col in inputs_df.columns:
-                inputs_df[col] = pd.to_numeric(inputs_df[col], errors="coerce").astype(
-                    float
-                )
 
         # Fill any NaN values with appropriate defaults
         default_values = {
@@ -166,7 +163,11 @@ class TireWearAgent(BaseAgent):
         if not self.model:
             logger.warning("Tire wear model not loaded. Using heuristic fallback.")
             # Simplified heuristic fallback
-            compound = inputs.get("Compound", "MEDIUM").upper()
+            compound = inputs.get("Compound", "MEDIUM")
+            if compound is None:
+                logger.warning("No compound specified, defaulting to MEDIUM")
+                compound = "MEDIUM"
+            compound = compound.upper()
             base_wear = self.base_wear_rate_s.get(
                 compound, self.base_wear_rate_s["MEDIUM"]
             )
@@ -195,6 +196,14 @@ class TireWearAgent(BaseAgent):
             "PrevLapTimeDegradation_s": inputs.get("PrevLapTimeDegradation_s", 0.0),
         }
 
+        # Ensure compound is not None and is uppercase
+        if feature_dict["Compound"] is None:
+            logger.warning(
+                "No compound specified in feature_dict, defaulting to MEDIUM"
+            )
+            feature_dict["Compound"] = "MEDIUM"
+        feature_dict["Compound"] = feature_dict["Compound"].upper()
+
         features_df = pd.DataFrame([feature_dict])
         features_df = self._calculate_interaction_features(features_df)
 
@@ -212,7 +221,7 @@ class TireWearAgent(BaseAgent):
                 f"TireWearAgent: Missing columns for model prediction: {missing_cols}. Available: {features_df.columns.tolist()}"
             )
             # Fallback if essential features are missing
-            compound = inputs.get("Compound", "MEDIUM").upper()
+            compound = feature_dict["Compound"]
             base_wear = self.base_wear_rate_s.get(
                 compound, self.base_wear_rate_s["MEDIUM"]
             )
@@ -252,7 +261,7 @@ class TireWearAgent(BaseAgent):
             logger.error(
                 f"Tire wear model prediction failed: {str(e)}. Falling back to heuristic."
             )
-            compound = inputs.get("Compound", "MEDIUM").upper()
+            compound = feature_dict["Compound"]
             base_wear = self.base_wear_rate_s.get(
                 compound, self.base_wear_rate_s["MEDIUM"]
             )
@@ -261,11 +270,6 @@ class TireWearAgent(BaseAgent):
         # Determine optimal window (can be a simple heuristic or enhanced)
         lap_number_in_stint = inputs.get("LapNumberInStint", 1)
         optimal_window = 3 <= lap_number_in_stint <= 15
-
-        # logger.info( # Commenting out verbose INFO log
-        #     f"TireWearAgent (Model): Compound={compound}, Lap={lap_number_in_stint}, "
-        #     f"RawPred={prediction_transformed:.4f}, Degradation={estimated_degradation_per_lap_s:.4f}s, Optimal={optimal_window}"
-        # )
 
         return {
             "estimated_degradation_per_lap_s": estimated_degradation_per_lap_s,

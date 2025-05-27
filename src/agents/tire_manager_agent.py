@@ -11,6 +11,7 @@ import json
 from .base_agent import BaseAgent
 from .tire_wear_agent import TireWearAgent
 from .grip_model_agent import GripModelAgent
+from .tire_temperature_agent import TireTemperatureAgent
 
 # Configure logging with more detailed format
 logging.basicConfig(
@@ -40,11 +41,12 @@ class TireManagerAgent(BaseAgent):
         """
         super().__init__(name)
 
-        # Initialize tire wear agent for degradation predictions
+        # Initialize sub-agents
         self.tire_wear_agent = TireWearAgent(
             name="TireWearAgent", model_path=tire_wear_model_path
         )
         self.grip_model_agent = GripModelAgent(name="GripModelAgent")
+        self.tire_temp_agent = TireTemperatureAgent(name="TireTemperatureAgent")
 
         # Initialize empty tire state
         self.reset_state()
@@ -99,14 +101,17 @@ class TireManagerAgent(BaseAgent):
     def reset_state(self) -> None:
         """Reset the tire state to default values."""
         self.state = {
-            "current_compound": "MEDIUM",
+            "driver_id": None,
+            "current_compound": None,
             "tire_age": 0,
             "tire_wear": 0.0,
+            "tire_temp": 80.0,  # Add initial tire temperature
             "grip_level": 1.0,
             "in_optimal_window": True,
-            "tire_health": "new",  # new, good, marginal, critical, expired
-            "last_wear_rate": 0.0,  # wear per lap (percentage)
-            "prev_lap_degradation_s_for_wear_model": 0.0,  # ADDED: To feed TireWearAgent
+            "tire_health": "GOOD",
+            "prev_lap_degradation_s_for_wear_model": 0.0,
+            "last_wear_rate": 0.0,
+            "simulation_year": 2024,
             "pit_recommendation": None,
             "compounds_used": [],
             "tire_history": [],  # List of (compound, age) tuples for all stints
@@ -125,57 +130,21 @@ class TireManagerAgent(BaseAgent):
 
         # Only log every _debug_log_frequency laps
         if self._debug_counter % self._debug_log_frequency == 0:
-            # Convert all values to JSON serializable types
-            def make_serializable(obj):
-                if isinstance(obj, (int, float, str, bool, type(None))):
-                    return obj
-                elif isinstance(obj, (list, tuple)):
-                    return [make_serializable(x) for x in obj]
-                elif isinstance(obj, dict):
-                    return {k: make_serializable(v) for k, v in obj.items()}
-                else:
-                    return str(obj)  # Convert any other types to strings
-
-            # debug_info = {
-            #     "lap_info": {
-            #         "lap_number": inputs.get("current_lap", 0),
-            #         "stint_lap": self.state["tire_age"],
-            #         "compound": self.state["current_compound"],
-            #     },
-            #     "wear_factors": {
-            #         "raw_degradation_s": float(degradation_s),  # Ensure float
-            #         "wear_increment_pct": float(wear_increment),  # Ensure float
-            #         "total_wear_pct": float(self.state["tire_wear"]),  # Ensure float
-            #     },
-            #     "grip_factors": make_serializable(grip_result),
-            #     "compound_specific": {
-            #         "cliff_point": float(
-            #             self.cliff_points.get(
-            #                 self.state["current_compound"], self.default_cliff_point
-            #             )
-            #         ),
-            #         "max_degradation_s": float(
-            #             self.total_degradation_s_for_100_percent_wear.get(
-            #                 self.state["current_compound"],
-            #                 self.default_total_degradation_s_for_100_wear,
-            #             )
-            #         ),
-            #     },
-            #     "model_factors": make_serializable(wear_result.get("wear_factors", {})),
-            #     "weather_impact": make_serializable(inputs.get("weather", {})),
-            #     "speed_metrics": {
-            #         "SpeedST": float(inputs.get("SpeedST", 0)),
-            #         "SpeedI1": float(inputs.get("SpeedI1", 0)),
-            #         "SpeedI2": float(inputs.get("SpeedI2", 0)),
-            #     },
-            # }
-
-            # try:
-            #     logger.debug(f"Tire Analysis:\n{json.dumps(debug_info, indent=2)}")
-            # except TypeError as e:
-            #     logger.error(f"Failed to serialize debug info: {e}")
-            #     # Log raw string representation as fallback
-            #     logger.debug(f"Tire Analysis (raw):\n{str(debug_info)}")
+            # Detailed debug logging for tire state
+            logger.debug(
+                f"\n=== Tire State Analysis (Lap {inputs.get('current_lap', 0)}) ===\n"
+                f"Compound: {self.state['current_compound']}, Age: {self.state['tire_age']}\n"
+                f"Current Wear: {self.state['tire_wear']:.2f}%, Wear Increment: {wear_increment:.3f}%\n"
+                f"Tire Temp: {self.state['tire_temp']:.1f}°C\n"
+                f"Current Grip: {self.state['grip_level']:.3f}\n"
+                f"Raw Degradation: {degradation_s:.3f}s\n"
+                f"=== Grip Calculation Details ===\n"
+                f"Track Evolution: {grip_result.get('track_evolution', 'N/A')}\n"
+                f"Temperature Performance: {grip_result.get('temp_performance', {})}\n"
+                f"Wear Grip: {grip_result.get('wear_grip', {})}\n"
+                f"=== Weather Impact ===\n"
+                f"Weather: {inputs.get('weather', {})}\n"
+            )
 
     def _calculate_wear_from_degradation(
         self,
@@ -183,15 +152,13 @@ class TireManagerAgent(BaseAgent):
         compound: str,
         lap_in_stint: int,
         driver_chars: Dict[str, float] = None,
+        grip_level: float = 1.0,
+        temp_status: Dict[str, Any] = None,
     ) -> float:
         """
         Convert model's degradation prediction to wear percentage more accurately.
+        Now includes grip and temperature effects on wear rate.
         """
-        # Get base conversion factor for compound
-        base_conversion = self.total_degradation_s_for_100_percent_wear.get(
-            compound, self.default_total_degradation_s_for_100_wear
-        )
-
         # Get driver characteristics or use defaults
         if driver_chars is None:
             driver_chars = {}
@@ -199,92 +166,187 @@ class TireManagerAgent(BaseAgent):
         aggression = driver_chars.get("aggression", 1.0)
         consistency = driver_chars.get("consistency", 1.0)
 
-        # Modified stint factor calculation with driver characteristics
-        # Initial phase (first 3 laps): reduced wear for tire warm-up
-        if lap_in_stint <= 3:
-            # More aggressive drivers heat tires up faster
-            warmup_factor = 0.7 + (lap_in_stint * 0.1 * aggression)
-            stint_factor = min(1.0, warmup_factor)
-        else:
-            # After warm-up: more gradual increase affected by driving style
-            base_stint_factor = (
-                1.0 + ((lap_in_stint - 3) / 40) ** 0.5
-            )  # More gradual increase
-            # Aggressive drivers increase wear faster but with less extreme effect
-            stint_factor = min(1.3, base_stint_factor * (1 + (aggression - 1) * 0.2))
+        # Compound-specific base wear rates (per lap)
+        base_wear_rates = {
+            "SOFT": 0.8 * (1.5 - tire_management * 0.3),  # More affected by management
+            "MEDIUM": 0.6 * (1.4 - tire_management * 0.25),
+            "HARD": 0.4 * (1.3 - tire_management * 0.2),  # Less affected by management
+            "INTERMEDIATE": 0.7,
+            "WET": 0.9,
+        }
+        base_wear = base_wear_rates.get(compound, 0.6)
 
-        # Calculate base wear with tire management skill
-        base_wear = (degradation_s / base_conversion) * 100
-        # Better tire management reduces base wear
-        base_wear *= 1.5 - (tire_management * 0.5)  # Reduced impact of tire management
+        # Aggressive driving increases wear linearly and then exponentially
+        aggression_delta = max(0, aggression - 1.0)  # Only consider excess aggression
+        aggression_factor = (
+            1.0 + aggression_delta + (aggression_delta * aggression_delta)
+        )
+        base_wear *= aggression_factor
 
-        # Compound-specific minimum and maximum wear per lap
-        min_wear_per_lap = {
-            "SOFT": 0.3 * (1.5 - tire_management * 0.5),  # Reduced from 0.4
-            "MEDIUM": 0.2 * (1.5 - tire_management * 0.5),  # Reduced from 0.3
-            "HARD": 0.15 * (1.5 - tire_management * 0.5),  # Reduced from 0.2
-            "INTERMEDIATE": 0.4 * (1.5 - tire_management * 0.5),
-            "WET": 0.5 * (1.5 - tire_management * 0.5),
-        }.get(compound, 0.25 * (1.5 - tire_management * 0.5))
+        # Stint phase effects
+        if lap_in_stint <= 2:  # Warm-up phase
+            stint_factor = 0.7 + (lap_in_stint * 0.15 * aggression)
+        elif lap_in_stint <= 5:  # Early stint
+            stint_factor = 1.0 + ((lap_in_stint - 2) * 0.05 * aggression)
+        else:  # Mid to late stint
+            stint_factor = 1.2 + ((lap_in_stint - 5) * 0.02 * aggression)
 
-        max_wear_per_lap = {
-            "SOFT": 2.5 * aggression,  # Reduced from 4.0
-            "MEDIUM": 2.0 * aggression,  # Reduced from 3.0
-            "HARD": 1.5 * aggression,  # Reduced from 2.5
-            "INTERMEDIATE": 3.0 * aggression,
-            "WET": 3.5 * aggression,
-        }.get(compound, 2.0 * aggression)
+        # Cap stint factor based on tire management skill
+        max_stint_factor = 2.0 - (tire_management * 0.5)
+        stint_factor = min(stint_factor, max_stint_factor)
 
-        # Calculate wear with stint factor
-        wear_increment = base_wear * stint_factor
+        # Grip effects on wear - more sliding = more wear
+        grip_wear_multiplier = 1.0 + (1.0 - min(1.0, max(0.3, grip_level)))
 
-        # Add randomness based on driver consistency
-        # Less consistent drivers have more variation
-        variation_scale = 0.02 * (2 - consistency)  # Reduced from 0.03
-        wear_variation = np.random.normal(0, variation_scale)
-        wear_increment *= 1 + wear_variation
+        # Temperature effects
+        temp_multiplier = 1.0
+        if temp_status:
+            if temp_status.get("is_overheating", False):
+                temp_multiplier = 1.3 - (tire_management * 0.1)
+            elif temp_status.get("is_cold", False):
+                temp_multiplier = 0.85
 
-        # Ensure wear stays within compound-specific bounds
-        wear_increment = min(max_wear_per_lap, max(min_wear_per_lap, wear_increment))
+        # Calculate base wear increment
+        wear_increment = (
+            base_wear * stint_factor * grip_wear_multiplier * temp_multiplier
+        )
 
-        return wear_increment
+        # Add consistency-based variation
+        variation_scale = 0.15 * (2.0 - consistency)
+        variation = np.random.normal(0, variation_scale)
+        wear_increment *= max(0.5, min(1.5, 1.0 + variation))  # Limit variation impact
+
+        # Ensure wear stays within realistic bounds
+        min_wear = base_wear * 0.5  # Minimum wear can't be too low
+        max_wear = base_wear * 3.0 * aggression  # Maximum wear scales with aggression
+        wear_increment = max(min_wear, min(max_wear, wear_increment))
+
+        return float(wear_increment)  # Ensure we return a float
 
     def _calculate_grip_from_wear(self, wear_pct: float, compound: str) -> float:
         """
         Calculate grip level based on wear percentage with compound-specific cliff points.
         """
-        cliff_point = self.cliff_points.get(compound, self.default_cliff_point)
+        # Ensure inputs are real numbers and within bounds
+        wear_pct = float(max(0.0, min(100.0, wear_pct)))
+        cliff_point = float(self.cliff_points.get(compound, self.default_cliff_point))
 
         # Store previous grip level for validation
-        prev_grip = self.state.get("grip_level", 1.0)
+        prev_grip = float(max(0.3, min(1.0, self.state.get("grip_level", 1.0))))
 
-        # More gradual initial grip loss
+        # More gradual initial grip loss using linear interpolation
         if wear_pct < cliff_point * 0.5:  # First half of tire life
-            grip_loss = (
-                wear_pct / cliff_point
-            ) ** 1.3  # Reduced from 1.5 for more gradual loss
+            wear_ratio = wear_pct / (cliff_point * 0.5)
+            grip_loss = wear_ratio * 0.3  # Linear loss up to 30%
         elif wear_pct < cliff_point:  # Second half until cliff
-            mid_point_loss = (0.5) ** 1.3
-            remaining_pct = (wear_pct - (cliff_point * 0.5)) / (cliff_point * 0.5)
-            grip_loss = mid_point_loss + (remaining_pct * (1 - mid_point_loss))
+            wear_ratio = (wear_pct - (cliff_point * 0.5)) / (cliff_point * 0.5)
+            grip_loss = 0.3 + (wear_ratio * 0.3)  # Linear loss from 30% to 60%
         else:  # After cliff point
-            base_loss = 1.0  # Full base loss at cliff
-            extra_wear = wear_pct - cliff_point
-            # More gradual post-cliff drop-off (2.5 power instead of 3.0)
-            cliff_loss = (extra_wear / (100 - cliff_point)) ** 2.5
-            grip_loss = base_loss * (1 + cliff_loss)
+            base_loss = 0.6  # 60% loss at cliff
+            extra_wear_ratio = min(1.0, (wear_pct - cliff_point) / (100 - cliff_point))
+            cliff_loss = extra_wear_ratio * 0.3  # Additional 30% loss post-cliff
+            grip_loss = base_loss + cliff_loss
 
         # Calculate final grip level
-        grip_level = 1.0 - (grip_loss * self.max_grip_loss_at_100_percent_wear)
+        grip_level = 1.0 - grip_loss
 
-        # Smaller random variations (±0.5% instead of ±1%)
+        # Add small random variation (±0.5%)
         grip_variation = np.random.normal(0, 0.005)
-        grip_level *= 1 + grip_variation
+        grip_level = grip_level * (1.0 + max(-0.005, min(0.005, grip_variation)))
 
         # Ensure grip never increases and stays within bounds
-        grip_level = min(prev_grip, max(0.3, min(1.0, grip_level)))
+        grip_level = float(max(0.3, min(prev_grip, min(1.0, grip_level))))
 
         return grip_level
+
+    def _calculate_initial_grip(
+        self,
+        wear_pct: float,
+        compound: str,
+        tire_temp: float,
+        track_temp: float = 30.0,
+        weather: Dict[str, Any] = None,
+    ) -> float:
+        """
+        Calculate an initial grip estimate based on current state.
+        This is used to influence wear calculation before final grip is determined.
+        """
+        # Debug logging for input parameters
+        logger.debug(
+            f"\n=== Initial Grip Calculation Inputs ===\n"
+            f"Current Wear: {wear_pct:.2f}%\n"
+            f"Compound: {compound}\n"
+            f"Tire Temperature: {tire_temp:.1f}°C\n"
+            f"Track Temperature: {track_temp:.1f}°C\n"
+            f"Weather: {weather}\n"
+        )
+
+        # Start with base grip of 1.0
+        initial_grip = 1.0
+
+        # Apply basic wear effect
+        cliff_point = self.cliff_points.get(compound, self.default_cliff_point)
+        if wear_pct < cliff_point:
+            wear_reduction = (wear_pct / cliff_point) * 0.3
+        else:
+            base_reduction = 0.3
+            post_cliff = (wear_pct - cliff_point) / (100 - cliff_point)
+            wear_reduction = base_reduction + (post_cliff * 0.4)
+
+        initial_grip *= 1.0 - wear_reduction
+
+        # Debug logging for wear impact
+        logger.debug(
+            f"\n=== Wear Impact on Initial Grip ===\n"
+            f"Cliff Point: {cliff_point}\n"
+            f"Wear Reduction: {wear_reduction:.3f}\n"
+            f"Grip After Wear: {initial_grip:.3f}\n"
+        )
+
+        # Apply basic temperature effect
+        temp_windows = {
+            "SOFT": (85, 105),
+            "MEDIUM": (80, 100),
+            "HARD": (75, 95),
+            "INTERMEDIATE": (50, 90),
+            "WET": (40, 70),
+        }
+        optimal_range = temp_windows.get(compound, (80, 100))
+
+        if tire_temp < optimal_range[0]:
+            temp_effect = 0.8 + (0.2 * tire_temp / optimal_range[0])
+        elif tire_temp > optimal_range[1]:
+            temp_effect = 0.8 + (0.2 * optimal_range[1] / tire_temp)
+        else:
+            temp_effect = 1.0
+
+        initial_grip *= temp_effect
+
+        # Debug logging for temperature impact
+        logger.debug(
+            f"\n=== Temperature Impact on Initial Grip ===\n"
+            f"Optimal Range: {optimal_range}\n"
+            f"Temperature Effect: {temp_effect:.3f}\n"
+            f"Grip After Temperature: {initial_grip:.3f}\n"
+        )
+
+        # Apply weather effects if available
+        weather_effect = 1.0
+        if weather:
+            if weather.get("rainfall", 0) > 0:
+                if compound not in ["WET", "INTERMEDIATE"]:
+                    weather_effect = 0.7
+
+        initial_grip *= weather_effect
+
+        # Debug logging for weather impact
+        logger.debug(
+            f"\n=== Weather Impact on Initial Grip ===\n"
+            f"Weather Effect: {weather_effect:.3f}\n"
+            f"Final Initial Grip: {initial_grip:.3f}\n"
+        )
+
+        return max(0.3, min(1.0, initial_grip))
 
     def process(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -307,71 +369,109 @@ class TireManagerAgent(BaseAgent):
             Dictionary containing updated tire state and recommendations
         """
         current_lap = inputs.get("current_lap", 0)
-        laps_remaining = inputs.get("laps_remaining", 0)
+        driver_id = inputs.get("driver_id", "Unknown")
 
-        # Get driver characteristics or use defaults
+        # Reset state for new driver or if compound is different
+        if self.state.get("driver_id") != driver_id or (
+            inputs.get("compound") and inputs.get("is_pit_lap", False)
+        ):
+            self.reset_state()
+            self.state["driver_id"] = driver_id
+
+        # Initialize state if needed
+        if self.state["current_compound"] is None:
+            self.state["current_compound"] = inputs.get("current_compound", "MEDIUM")
+            self.state["tire_age"] = inputs.get("tire_age", 0)
+            self.state["tire_wear"] = inputs.get("tire_wear", 0.0)
+            self.state["compounds_used"] = inputs.get(
+                "compounds_used", [self.state["current_compound"]]
+            )
+            self.state["tire_history"] = inputs.get(
+                "tire_history", [(self.state["current_compound"], 0)]
+            )
+
+        # Debug logging for tire state
+        logger.debug(
+            f"\n=== Tire State for Driver {driver_id} at Lap {current_lap} ==="
+        )
+        logger.debug(
+            f"Initial state: wear={self.state['tire_wear']:.1f}%, age={self.state['tire_age']}, compound={self.state['current_compound']}"
+        )
+
+        # Extract driver characteristics
         driver_chars = inputs.get("characteristics", {})
-        tire_management_factor = driver_chars.get("tire_management", 1.0)
-        consistency_factor = driver_chars.get("consistency", 1.0)
-        aggression_factor = driver_chars.get("aggression", 1.0)
-        wet_weather_skill = driver_chars.get("wet_weather", 1.0)
+        if not driver_chars:
+            driver_chars = {
+                "tire_management": 0.8 + (np.random.random() * 0.4),
+                "aggression": 0.8 + (np.random.random() * 0.4),
+                "consistency": 0.8 + (np.random.random() * 0.4),
+                "wet_weather": 0.8 + (np.random.random() * 0.4),
+            }
 
-        # Check if this is a pit lap dictated by StrategyAgent and new compound is chosen
-        is_pit_lap_from_strategy = inputs.get("is_pit_lap", False)
-        new_compound_from_strategy = inputs.get("new_compound", None)
-
-        if is_pit_lap_from_strategy and new_compound_from_strategy:
-            # Record previous tire in history if it was a valid stint
-            if self.state["current_compound"] and self.state["tire_age"] > 0:
-                self.state["tire_history"].append(
-                    (self.state["current_compound"], self.state["tire_age"])
+        # Handle pit stops and compound changes
+        is_pit_lap = inputs.get("is_pit_lap", False)
+        if is_pit_lap:
+            new_compound = inputs.get("compound")
+            if new_compound:
+                logger.debug(
+                    f"PIT STOP - Changing from {self.state['current_compound']} to {new_compound}"
+                )
+                logger.debug(
+                    f"Pre-pit state: wear={self.state['tire_wear']:.1f}%, age={self.state['tire_age']}"
                 )
 
-            # Set new compound based on StrategyAgent's decision
-            self.state["current_compound"] = new_compound_from_strategy.upper()
-            self.state["tire_age"] = 0
-            self.state["tire_wear"] = 0.0
-            self.state["grip_level"] = 1.0
-            self.state["in_optimal_window"] = True
-            self.state["tire_health"] = "new"
-            self.state["last_wear_rate"] = 0.0
-            self.state["prev_lap_degradation_s_for_wear_model"] = 0.0
+                # Save current tire state to history before changing
+                if self.state["current_compound"] is not None:
+                    self.state["tire_history"].append(
+                        (self.state["current_compound"], self.state["tire_age"])
+                    )
+                    if (
+                        self.state["current_compound"]
+                        not in self.state["compounds_used"]
+                    ):
+                        self.state["compounds_used"].append(
+                            self.state["current_compound"]
+                        )
 
-            if self.state["current_compound"] not in self.state["compounds_used"]:
-                self.state["compounds_used"].append(self.state["current_compound"])
+                # Update to new compound
+                self.state["current_compound"] = new_compound.upper()
+                self.state["tire_age"] = 0
+                self.state["tire_wear"] = 0.0
+                self.state["prev_lap_degradation_s_for_wear_model"] = 0.0
+                self.state["last_wear_rate"] = 0.0
 
-            logger.info(
-                f"New {self.state['current_compound']} tires fitted (Strategy Decision)"
-            )
-
-        elif current_lap == 1 and not self.state["compounds_used"]:
-            # First lap of the race, initialize based on starting compound
-            raw_input_compound = inputs.get("current_compound")
-            initial_compound = inputs.get("current_compound", "MEDIUM")
-            self.state["current_compound"] = initial_compound.upper()
-            self.state["tire_age"] = 0
-            self.state["tire_wear"] = 0.0
-            self.state["grip_level"] = 1.0
-            self.state["in_optimal_window"] = True
-            self.state["tire_health"] = "new"
-            self.state["last_wear_rate"] = 0.0
-            self.state["prev_lap_degradation_s_for_wear_model"] = 0.0
-
-            if self.state["current_compound"] not in self.state["compounds_used"]:
-                self.state["compounds_used"].append(self.state["current_compound"])
-            logger.info(
-                f"Initial {self.state['current_compound']} tires fitted for Lap 1"
-            )
+                logger.debug(
+                    f"Post-pit state: wear={self.state['tire_wear']:.1f}%, age={self.state['tire_age']}"
+                )
         else:
-            # Normal lap, not pitting, not lap 1 init
+            # Normal lap - increment tire age
             self.state["tire_age"] += 1
+            logger.debug(
+                f"Normal lap - Incrementing tire age to {self.state['tire_age']}"
+            )
 
-        # Store speed metrics for wear calculations
-        self._last_speed_metrics = {
-            "SpeedST": inputs.get("SpeedST", 0),
-            "SpeedI1": inputs.get("SpeedI1", 0),
-            "SpeedI2": inputs.get("SpeedI2", 0),
+        # Calculate tire temperature
+        temp_inputs = {
+            "compound": self.state["current_compound"],
+            "current_temp": self.state["tire_temp"],
+            "track_temp": inputs.get("weather", {}).get("track_temp", 30.0),
+            "air_temp": inputs.get("weather", {}).get("air_temp", 25.0),
+            "rainfall": inputs.get("weather", {}).get("rainfall", 0.0),
+            "driver_characteristics": driver_chars,
+            "is_pit_lap": is_pit_lap,
+            "lap_number": inputs.get("current_lap", 1),
         }
+        temp_result = self.tire_temp_agent.process(temp_inputs)
+        self.state["tire_temp"] = temp_result["tire_temp"]
+
+        # Calculate initial grip estimate for wear calculation
+        initial_grip = self._calculate_initial_grip(
+            self.state["tire_wear"],
+            self.state["current_compound"],
+            self.state["tire_temp"],
+            inputs.get("weather", {}).get("track_temp", 30.0),
+            inputs.get("weather", {}),
+        )
 
         # Prepare inputs for tire wear agent
         wear_inputs = {
@@ -393,25 +493,26 @@ class TireManagerAgent(BaseAgent):
         # Calculate updated wear
         wear_result = self.tire_wear_agent.process(wear_inputs)
         degradation_this_lap_s = wear_result["estimated_degradation_per_lap_s"]
-        self.state["in_optimal_window"] = wear_result["optimal_window"]
 
-        # Calculate wear using new method with driver characteristics
+        # Calculate wear using new method with driver characteristics and initial grip
         wear_increment = self._calculate_wear_from_degradation(
             degradation_this_lap_s,
             self.state["current_compound"],
             self.state["tire_age"],
             driver_chars,
+            initial_grip,  # Pass initial grip estimate
+            temp_result["temp_status"],  # Pass temperature status
         )
 
         # Update accumulated wear
         self.state["tire_wear"] = min(100, self.state["tire_wear"] + wear_increment)
 
-        # Use new GripModelAgent for grip calculations
+        # Use GripModelAgent for final grip calculations with updated wear
         grip_inputs = {
             "compound": self.state["current_compound"],
             "tire_wear": self.state["tire_wear"],
-            "tire_temp": inputs.get("tire_temp", 90.0),  # Default to reasonable temp
-            "track_temp": inputs.get("track_temp", 30.0),
+            "tire_temp": self.state["tire_temp"],
+            "track_temp": inputs.get("weather", {}).get("track_temp", 30.0),
             "current_lap": inputs.get("current_lap", 1),
             "total_laps": inputs.get("total_laps", 50),
             "weather": inputs.get("weather", {}),
@@ -424,15 +525,13 @@ class TireManagerAgent(BaseAgent):
         self.state["in_optimal_window"] = grip_result["in_optimal_window"]
         self.state["track_evolution"] = grip_result["track_evolution"]
 
-        # Log detailed degradation analysis
+        # Log detailed state analysis
         self._log_degradation_factors(
             inputs, wear_result, degradation_this_lap_s, wear_increment, grip_result
         )
 
-        # STORE the predicted degradation for THIS lap to be used as PREVIOUS for the NEXT lap
+        # Store the predicted degradation for next lap
         self.state["prev_lap_degradation_s_for_wear_model"] = degradation_this_lap_s
-
-        # Update last_wear_rate
         self.state["last_wear_rate"] = wear_increment
 
         # Update tire health status
@@ -440,7 +539,7 @@ class TireManagerAgent(BaseAgent):
 
         # Generate pit recommendation
         pit_recommendation = self._generate_pit_recommendation(
-            laps_remaining, inputs.get("strategy", {})
+            inputs.get("laps_remaining", 0), inputs.get("strategy", {})
         )
         self.state["pit_recommendation"] = pit_recommendation
 
@@ -455,8 +554,17 @@ class TireManagerAgent(BaseAgent):
             "estimated_degradation_s_this_lap": degradation_this_lap_s,
             "wear_increment": wear_increment,
             "tire_health": self.state["tire_health"],
+            "tire_temp": self.state["tire_temp"],  # Add tire temperature to output
+            "temp_status": {  # Add temperature status information
+                "is_overheating": temp_result["is_overheating"],
+                "is_cold": temp_result["is_cold"],
+                "optimal_temp": temp_result["optimal_temp"],
+                "temp_delta": temp_result["temp_delta"],
+            },
             "temp_performance": grip_result["temp_performance"],
             "wear_grip": grip_result["wear_grip"],
+            "compounds_used": self.state["compounds_used"],
+            "tire_history": self.state["tire_history"],
         }
 
     def _update_tire_health(self) -> None:
@@ -718,3 +826,162 @@ class TireManagerAgent(BaseAgent):
                 next_compound = "MEDIUM"
 
         return next_compound
+
+    def _calculate_wear_impact(
+        self, current_wear: float, compound_characteristics: Dict
+    ) -> Dict:
+        """
+        Calculate the impact of tire wear on grip.
+
+        Args:
+            current_wear: Current tire wear percentage (0-100)
+            compound_characteristics: Tire compound characteristics
+
+        Returns:
+            Dictionary with wear impact details
+        """
+        # Ensure wear is positive and within bounds
+        current_wear = max(0.0, min(100.0, float(current_wear)))
+
+        cliff_point = compound_characteristics["cliff_point"]
+        cliff_severity = compound_characteristics["cliff_severity"]
+
+        # Calculate base grip loss (linear component)
+        base_grip_loss = (current_wear / 100.0) * 0.5  # Maximum 50% grip loss from wear
+
+        # Check for high wear effects (non-linear)
+        high_wear_active = current_wear > (
+            cliff_point * 0.7
+        )  # Start non-linear effects before cliff
+        cliff_active = current_wear > cliff_point
+
+        # Apply additional grip loss for high wear
+        if high_wear_active:
+            wear_beyond_threshold = (current_wear - (cliff_point * 0.7)) / (
+                cliff_point * 0.3
+            )
+            base_grip_loss += wear_beyond_threshold * 0.2  # Additional 20% max loss
+
+        # Apply cliff effect if active
+        if cliff_active:
+            wear_beyond_cliff = (current_wear - cliff_point) / (100 - cliff_point)
+            base_grip_loss += (
+                wear_beyond_cliff * cliff_severity * 0.3
+            )  # Severe grip loss
+
+        # Calculate final grip multiplier (ensure it stays positive)
+        grip_multiplier = max(0.1, 1.0 - base_grip_loss)
+
+        return {
+            "grip_multiplier": float(grip_multiplier),
+            "base_grip_loss": float(base_grip_loss),
+            "high_wear_active": bool(high_wear_active),
+            "cliff_active": bool(cliff_active),
+            "compound_characteristics": compound_characteristics,
+        }
+
+    def _calculate_grip_level(
+        self,
+        initial_grip: float,
+        wear_impact: Dict,
+        temp_impact: Dict,
+        weather_impact: float,
+    ) -> float:
+        """
+        Calculate the final grip level considering all factors.
+
+        Args:
+            initial_grip: Base grip level (0-1)
+            wear_impact: Impact of tire wear
+            temp_impact: Impact of temperature
+            weather_impact: Impact of weather conditions
+
+        Returns:
+            Final grip level (0-1)
+        """
+        # Ensure all inputs are real numbers and within bounds
+        initial_grip = max(0.0, min(1.0, float(initial_grip)))
+        weather_impact = max(0.0, min(1.0, float(weather_impact)))
+
+        # Get grip multipliers
+        wear_multiplier = float(wear_impact["grip_multiplier"])
+        temp_multiplier = float(temp_impact["grip_multiplier"])
+
+        # Ensure multipliers are within bounds
+        wear_multiplier = max(0.1, min(1.0, wear_multiplier))
+        temp_multiplier = max(0.1, min(1.0, temp_multiplier))
+
+        # Calculate combined grip
+        grip = initial_grip * wear_multiplier * temp_multiplier * weather_impact
+
+        # Ensure final grip stays within realistic bounds
+        return max(0.3, min(1.0, float(grip)))  # Minimum 30% grip
+
+    def calculate_wear_increment(
+        self,
+        compound: str,
+        current_wear: float,
+        driving_style: float,
+        track_condition: float,
+        is_following: bool,
+        is_defending: bool,
+        is_attacking: bool,
+    ) -> float:
+        """
+        Calculate tire wear increment for current lap.
+
+        Args:
+            compound: Tire compound
+            current_wear: Current tire wear percentage
+            driving_style: Driver's aggression level (0-1)
+            track_condition: Track condition factor
+            is_following: Whether following another car closely
+            is_defending: Whether defending position
+            is_attacking: Whether attacking position ahead
+
+        Returns:
+            Wear increment percentage
+        """
+        # Ensure inputs are within bounds
+        current_wear = max(0.0, min(100.0, float(current_wear)))
+        driving_style = max(0.0, min(1.0, float(driving_style)))
+        track_condition = max(0.5, min(1.5, float(track_condition)))
+
+        # Base wear rates per compound (realistic F1 values)
+        base_rates = {
+            "SOFT": 0.8,  # Higher wear rate
+            "MEDIUM": 0.6,  # Balanced wear rate
+            "HARD": 0.4,  # Lower wear rate
+            "INTERMEDIATE": 0.7,
+            "WET": 0.5,
+        }
+
+        # Get base wear rate for compound
+        base_wear = base_rates.get(compound, 0.6)  # Default to medium if unknown
+
+        # Apply driving style effect (exponential to punish aggressive driving)
+        style_multiplier = 1.0 + (driving_style**2)
+
+        # Apply track condition effect
+        condition_effect = 1.0 / track_condition  # Worse conditions = more wear
+
+        # Additional wear from racing situations
+        racing_multiplier = 1.0
+        if is_following:
+            racing_multiplier *= 1.2  # 20% more wear when following
+        if is_defending:
+            racing_multiplier *= 1.15  # 15% more when defending
+        if is_attacking:
+            racing_multiplier *= 1.25  # 25% more when attacking
+
+        # Calculate wear increment
+        wear_increment = (
+            base_wear * style_multiplier * condition_effect * racing_multiplier
+        )
+
+        # Apply progressive wear increase as tire ages
+        if current_wear > 50:
+            wear_increment *= 1.0 + ((current_wear - 50) / 100)
+
+        # Ensure wear increment stays within realistic bounds
+        return max(0.1, min(2.0, float(wear_increment)))

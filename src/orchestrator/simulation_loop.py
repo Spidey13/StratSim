@@ -89,50 +89,30 @@ class RaceSimulator:
 
     def _initialize_race_state(self) -> None:
         """Initialize the state of the race, drivers, and weather."""
-        # Initialize overall race state
-        self.state = {
-            "drivers": {},
-            "weather": self.config.get("weather_condition", "Dry"),
-            "track_status": {},
-            "lap_times": {},
-            "race_results": {},
-            "safety_car": {"status": False, "laps_out": 0},
-            "virtual_safety_car": {"status": False, "laps_out": 0},
-            "red_flag": False,
-            "current_lap": 0,
-            "total_laps": self.config.get("race_laps", 50),
-            "circuit_name": self.config.get("circuit", "Unknown Circuit"),
-            "year": self.config.get("year", 2023),
+        # Initialize weather and track state
+        weather_condition = self.config.get("weather_condition", "Dry")
+        self.state["weather"] = self._initialize_weather(weather_condition)
+        self.state["track_state"] = {
+            "dry_line": weather_condition == "Dry",
+            "track_temp": self.state["weather"]["track_temp"],
+            "air_temp": self.state["weather"]["air_temp"],
         }
 
-        drivers_config_from_sim_config = self.config.get("driver_info", {})
+        logger.debug(f"Initialized Weather: {self.state['weather']}")
+        logger.debug(f"Initialized Track State: {self.state['track_state']}")
 
-        # Sort drivers by their starting positions
+        # Get sorted drivers by grid position
         sorted_drivers = sorted(
-            drivers_config_from_sim_config.items(),
-            key=lambda x: x[1].get(
-                "starting_position", 999
-            ),  # Use high default for unspecified
+            self.config.get("drivers", {}).items(),
+            key=lambda x: x[1].get("grid_position", 999),
         )
 
-        # Initialize state for each driver based on config, maintaining grid order
-        for position, (
-            driver_id_code_from_config,
-            driver_specific_config_data,
-        ) in enumerate(sorted_drivers, 1):
-            actual_starting_compound = driver_specific_config_data.get(
-                "starting_compound", "MEDIUM"
-            )
+        # Initialize driver states
+        self.state["drivers"] = {}
+        position = 1
 
-            # Initial speed values
-            initial_speeds = {
-                "SpeedST": driver_specific_config_data.get("SpeedST", 280.0),
-                "SpeedI1": driver_specific_config_data.get("SpeedI1", 200.0),
-                "SpeedI2": driver_specific_config_data.get("SpeedI2", 150.0),
-                "SpeedFL": driver_specific_config_data.get("SpeedFL", 260.0),
-            }
-
-            # Get driver characteristics
+        for driver_id_code_from_config, driver_specific_config_data in sorted_drivers:
+            # Get driver characteristics or generate random ones
             driver_characteristics = driver_specific_config_data.get(
                 "characteristics", {}
             )
@@ -144,7 +124,34 @@ class RaceSimulator:
                     "wet_weather": 0.8 + (np.random.random() * 0.4),
                 }
 
-            self.state["drivers"][driver_id_code_from_config] = {
+            # Get initial compound
+            actual_starting_compound = driver_specific_config_data.get(
+                "starting_compound", "MEDIUM"
+            )
+
+            # Initialize speeds
+            initial_speeds = {
+                "SpeedST": 280.0,  # Starting speed
+                "SpeedI1": 200.0,  # Intermediate 1 speed
+                "SpeedI2": 150.0,  # Intermediate 2 speed
+                "SpeedFL": 280.0,  # Finish line speed
+                "SpeedST_Diff": 0.0,
+                "SpeedI1_Diff": 0.0,
+                "SpeedI2_Diff": 0.0,
+                "SpeedFL_Diff": 0.0,
+            }
+
+            # Initialize tire temperature based on compound
+            initial_tire_temp = {
+                "SOFT": 90.0,
+                "MEDIUM": 85.0,
+                "HARD": 80.0,
+                "INTERMEDIATE": 65.0,
+                "WET": 55.0,
+            }.get(actual_starting_compound, 85.0)
+
+            # Create driver state
+            driver_state = {
                 "driver_name": driver_specific_config_data.get(
                     "driver_name", "Unknown Driver"
                 ),
@@ -154,83 +161,68 @@ class RaceSimulator:
                 "current_compound": actual_starting_compound,
                 "tire_age": 0,
                 "tire_wear": 0.0,
+                "tire_temp": initial_tire_temp,
                 "grip_level": 1.0,
                 "lap_times": [],
                 "pit_stops": [],
-                "position": position,  # Use the enumerated position
-                "grid_position": position,  # Store original grid position
+                "position": position,
+                "grid_position": position,
                 "total_race_time": 0.0,
                 "prev_lap_degradation_s": 0.0,
+                "estimated_degradation_s_this_lap": 0.0,
                 "driver_id_code": driver_id_code_from_config,
                 "team_id_code": driver_specific_config_data.get(
                     "team_id", driver_specific_config_data.get("team_name", "UNKNOWN")
                 ),
                 "characteristics": driver_characteristics,
+                "in_optimal_window": True,
+                "tire_health": "GOOD",
+                "track_evolution": 0.92,  # Starting grip level
+                "compounds_used": [actual_starting_compound],
+                "tire_history": [
+                    (actual_starting_compound, 0)
+                ],  # (compound, age) tuples
                 **initial_speeds,
             }
 
-        weather_condition = self.config.get("weather_condition", "Dry")
-        self.state["weather"] = self._initialize_weather(weather_condition)
-        self.state["track_state"] = {
-            "dry_line": weather_condition == "Dry",
-        }
+            self.state["drivers"][driver_id_code_from_config] = driver_state
+            position += 1
+
+            logger.debug(
+                f"Initialized Driver State for {driver_id_code_from_config}: {driver_state}"
+            )
+
+        logger.info(f"Initialized {len(self.state['drivers'])} drivers")
 
     def _initialize_weather(self, weather_condition: str) -> Dict[str, Any]:
         """Initialize weather based on condition string."""
-        # This function can be expanded with more detailed initial weather states
-        # For now, it sets up a basic structure with a forecast
-        base_weather = {}
         if weather_condition == "Dry":
-            base_weather = {
+            return {
                 "condition": "Dry",
-                "rainfall": 0,
-                "air_temp": 25,
-                "track_temp": 35,
-                "humidity": 40,
-                "wind_speed": 5,
+                "rainfall": 0.0,
+                "track_temp": 35.0,  # Reasonable track temperature for dry conditions
+                "air_temp": 25.0,  # Reasonable air temperature for dry conditions
+                "humidity": 50.0,  # Moderate humidity
+                "wind_speed": 5.0,  # Light wind
             }
-        elif weather_condition == "Light Rain":
-            base_weather = {
-                "condition": "Light Rain",
-                "rainfall": 1,
-                "air_temp": 18,
-                "track_temp": 22,
-                "humidity": 80,
-                "wind_speed": 10,
+        elif weather_condition == "Wet":
+            return {
+                "condition": "Wet",
+                "rainfall": 2.0,  # Moderate rain
+                "track_temp": 20.0,  # Lower track temperature due to rain
+                "air_temp": 18.0,  # Lower air temperature in wet conditions
+                "humidity": 85.0,  # High humidity
+                "wind_speed": 15.0,  # Stronger winds
             }
-        elif weather_condition == "Heavy Rain":
-            base_weather = {
-                "condition": "Heavy Rain",
-                "rainfall": 3,
-                "air_temp": 15,
-                "track_temp": 18,
-                "humidity": 95,
-                "wind_speed": 15,
-            }
-        else:  # Variable and default
-            base_weather = {
-                "condition": "Dry",
-                "rainfall": 0,
-                "air_temp": 22,
-                "track_temp": 30,
-                "humidity": 60,
-                "wind_speed": 8,
-            }
-
-        # Generate a forecast
-        forecast = []
-        if weather_condition == "Variable":
-            for i in range(1, self.race_laps + 1):
-                if i < self.race_laps * 0.4:
-                    forecast.append({"lap": i, "condition": "Dry"})
-                else:
-                    forecast.append({"lap": i, "condition": "Light Rain"})
         else:
-            for i in range(1, self.race_laps + 1):
-                forecast.append({"lap": i, "condition": base_weather["condition"]})
-
-        base_weather["forecast"] = forecast
-        return base_weather
+            return {
+                "condition": "Mixed",
+                "rainfall": 0.5,  # Light rain
+                "track_temp": 25.0,  # Intermediate track temperature
+                "air_temp": 22.0,  # Intermediate air temperature
+                "humidity": 70.0,  # Moderate to high humidity
+                "wind_speed": 10.0,  # Moderate wind
+            }
 
     def run_simulation(self, callback=None) -> List[Dict[str, Any]]:
         """
@@ -256,10 +248,45 @@ class RaceSimulator:
         self.is_running = False
         return self.race_history
 
+    def _update_driver_positions(self) -> None:
+        """Update driver positions based on total race times."""
+        # Sort drivers by total race time
+        sorted_drivers = sorted(
+            self.state["drivers"].items(), key=lambda x: x[1]["total_race_time"]
+        )
+
+        # Update positions and calculate gaps
+        leader_time = sorted_drivers[0][1]["total_race_time"]
+        prev_time = leader_time
+
+        for position, (driver_id, driver_state) in enumerate(sorted_drivers, 1):
+            # Update position
+            self.state["drivers"][driver_id]["position"] = position
+
+            # Calculate gaps
+            gap_to_leader = driver_state["total_race_time"] - leader_time
+            gap_ahead = (
+                driver_state["total_race_time"] - prev_time if position > 1 else 0.0
+            )
+
+            # Update gaps in driver state
+            self.state["drivers"][driver_id]["gap_to_leader"] = gap_to_leader
+            self.state["drivers"][driver_id]["gap_ahead"] = gap_ahead
+
+            # Store current time for next iteration
+            prev_time = driver_state["total_race_time"]
+
+            # Debug log
+            logger.debug(
+                f"Updated position for {driver_id}: P{position}, "
+                f"Gap to leader: {gap_to_leader:.3f}s, "
+                f"Gap ahead: {gap_ahead:.3f}s"
+            )
+
     def simulate_lap(self) -> Dict[str, Any]:
-        """
-        Simulate one lap of the race.
-        """
+        """Simulate one lap of the race."""
+        logger.debug(f"\n=== Starting Lap {self.current_lap} Simulation ===")
+
         # Process weather at the start of each lap
         weather_input = {
             "lap": self.current_lap,
@@ -269,259 +296,174 @@ class RaceSimulator:
         weather_output = self.agents["weather"].process(weather_input)
         self.state["weather"] = weather_output["weather"]
 
-        lap_data_for_history = {
-            "lap": self.current_lap,
-            "weather": self.state["weather"],
-            "track_state": self.state["track_state"],
-            "drivers": {},
-        }
+        lap_specific_outputs = {}  # To store results like performance_factors, gap_effects, etc.
 
-        # Calculate positions and gaps before processing drivers
-        sorted_drivers = sorted(
-            self.state["drivers"].items(), key=lambda item: item[1]["total_race_time"]
-        )
-
-        # Update track positions dictionary
-        track_positions = {}
-        leader_time = sorted_drivers[0][1]["total_race_time"]
-
-        for pos, (driver_id, driver_data) in enumerate(sorted_drivers, 1):
-            track_positions[driver_id] = pos
-
-            # Calculate gaps
-            gap_to_leader = driver_data["total_race_time"] - leader_time
-            gap_ahead = 0.0
-            if pos > 1:
-                gap_ahead = (
-                    driver_data["total_race_time"]
-                    - sorted_drivers[pos - 2][1]["total_race_time"]
-                )
-
-            # Update driver state with position and gaps
-            self.state["drivers"][driver_id].update(
-                {
-                    "position": pos,
-                    "gap_to_leader": gap_to_leader,
-                    "gap_to_ahead": gap_ahead,
-                    "positions_gained": self.state["drivers"][driver_id][
-                        "grid_position"
-                    ]
-                    - pos,
-                }
-            )
-
-        # Update track state with position data
-        self.state["track_state"]["positions"] = track_positions
-
-        # Process each driver's lap
-        for driver_id, driver_state in self.state["drivers"].items():
-            # Capture the degradation from the PREVIOUS lap to be used by LapTimeAgent for THIS lap.
-            # This value should have been set at the end of the previous lap's processing for this driver.
-            degradation_affecting_current_lap_time = driver_state[
-                "prev_lap_degradation_s"
-            ]
-
-            # 4. Vehicle Dynamics Agent: Simulate speeds for the lap
-            dynamics_input = {
-                "circuit_id": self.circuit_name,
-                "driver_id": driver_id,
-                "grip_level": driver_state["grip_level"],
-                "compound": driver_state["current_compound"],
-                "lap": self.current_lap,
-                "total_laps": self.race_laps,
-                "current_SpeedST": driver_state["SpeedST"],
-                "current_SpeedI1": driver_state["SpeedI1"],
-                "current_SpeedI2": driver_state["SpeedI2"],
-                "current_SpeedFL": driver_state["SpeedFL"],
+        # Step 1: Process each driver's lap, update their states in self.state["drivers"]
+        # (e.g., tire wear, total_race_time), and collect lap-specific outputs.
+        for driver_id, driver_state_ref in self.state["drivers"].items():
+            # Get current tire state for logging or pre-agent logic if needed
+            current_tire_state_log = {
+                "wear": driver_state_ref.get("tire_wear", 0),
+                "age": driver_state_ref.get("tire_age", 0),
+                "compound": driver_state_ref.get("current_compound", "UNKNOWN"),
             }
-            vehicle_dynamics_output = self.agents["vehicle_dynamics"].process(
-                dynamics_input
-            )
-            # Update driver state with new speeds immediately for subsequent agents
-            driver_state["SpeedST"] = vehicle_dynamics_output.get(
-                "SpeedST", driver_state["SpeedST"]
-            )
-            driver_state["SpeedI1"] = vehicle_dynamics_output.get(
-                "SpeedI1", driver_state["SpeedI1"]
-            )
-            driver_state["SpeedI2"] = vehicle_dynamics_output.get(
-                "SpeedI2", driver_state["SpeedI2"]
-            )
-            driver_state["SpeedFL"] = vehicle_dynamics_output.get(
-                "SpeedFL", driver_state["SpeedFL"]
-            )
-            driver_state["SpeedST_Diff"] = vehicle_dynamics_output.get(
-                "SpeedST_Diff", 0.0
-            )
-            driver_state["SpeedI1_Diff"] = vehicle_dynamics_output.get(
-                "SpeedI1_Diff", 0.0
-            )
-            driver_state["SpeedI2_Diff"] = vehicle_dynamics_output.get(
-                "SpeedI2_Diff", 0.0
-            )
-            driver_state["SpeedFL_Diff"] = vehicle_dynamics_output.get(
-                "SpeedFL_Diff", 0.0
+            logger.debug(f"\n--- Processing {driver_id} ---")
+            logger.debug(
+                f"Starting tire state: wear={current_tire_state_log['wear']:.1f}%, age={current_tire_state_log['age']}, compound={current_tire_state_log['compound']}"
             )
 
-            # 3. Tire Manager Agent: Update tire state
-            # logger.debug(
-            #     f"SimLoop: Weather state BEFORE TireManagerAgent for lap {self.current_lap}, driver {driver_id}: {self.state['weather']}"
-            # )
-            laps_remaining_in_race = self.race_laps - self.current_lap
-            tire_manager_input = {
-                "circuit_id": self.circuit_name,
-                "driver_id": driver_id,
-                "team_id": driver_state.get("team_id_code", "Unknown_Team"),
-                "year": self.state.get("simulation_year", 2024),
-                "weather": self.state["weather"],
-                "SpeedST": driver_state["SpeedST"],
-                "SpeedI1": driver_state["SpeedI1"],
-                "SpeedI2": driver_state["SpeedI2"],
-                "laps_remaining": laps_remaining_in_race,
-                "current_lap": self.current_lap,
-                "characteristics": driver_state.get(
-                    "characteristics", {}
-                ),  # Add driver characteristics
-                **driver_state,
-                "strategy": {
-                    "total_laps": self.config.get("race_laps", 50),
-                    "available_slick_compounds": self.config.get(
-                        "tyre_compounds", {}
-                    ).get("slicks", ["SOFT", "MEDIUM", "HARD"]),
-                    "weather_forecast": self.state["weather"],
-                },
-            }
-
-            # logger.debug(
-            #     f"SimLoop: Passing to TireManagerAgent for driver {driver_id}, lap {self.current_lap}: weather={self.state['weather']}"
-            # )
-
-            tire_manager_output = self.agents["tire_manager"].process(
-                tire_manager_input
-            )
-            # Update driver_state with fresh tire info (wear, grip, pit_recommendation etc.)
-            driver_state.update(tire_manager_output)
-
-            # 2. Strategy Agent: Decide on pitting
+            # Strategy Agent
             strategy_input = {
-                "lap": self.state["lap"],
+                "lap": self.current_lap,
                 "total_laps": self.race_laps,
                 "weather": self.state["weather"],
                 "track_state": self.state["track_state"],
                 "circuit_id": self.circuit_name,
                 "driver_id": driver_id,
-                "driver_state": driver_state,
+                "driver_state": driver_state_ref,  # Pass reference to live state
                 "pit_time_penalty": self.pit_time_penalty,
-                "driver_characteristics": driver_state.get("characteristics", {}),
-                "track_positions": track_positions,  # Add track positions
+                "driver_characteristics": driver_state_ref.get("characteristics", {}),
+                "track_positions": {
+                    d_id: self.state["drivers"][d_id][
+                        "position"
+                    ]  # Use current positions
+                    for d_id in self.state["drivers"]
+                },
             }
             strategy_result = self.agents["strategy"].process(strategy_input)
             pit_decision = strategy_result.get("pit_decision", False)
-            new_compound_decision = strategy_result.get("new_compound")
+            new_compound = strategy_result.get("new_compound")
 
             if pit_decision:
-                logger.info(
-                    f"StrategyAgent decided to PIT for {driver_id} on lap {self.current_lap}. Re-evaluating TireManager state for pit."
+                logger.debug(
+                    f"PIT DECISION - Driver {driver_id} pitting for {new_compound}"
                 )
-                pit_tire_manager_input = {
-                    **tire_manager_input,
-                    "is_pit_lap": True,
-                    "new_compound": new_compound_decision,
-                }
-                tire_manager_output_after_pit_decision = self.agents[
-                    "tire_manager"
-                ].process(pit_tire_manager_input)
-                driver_state.update(tire_manager_output_after_pit_decision)
-                # Ensure prev_lap_degradation_s for next lap reflects the most recent TMA output
-                # This will be captured before LapTimeAgent and then formally set for next lap.
+                # Log pre-pit tire state directly from driver_state_ref as it's live
+                logger.debug(
+                    f"Pre-pit tire state: wear={driver_state_ref['tire_wear']:.1f}%, age={driver_state_ref['tire_age']}"
+                )
 
-            # Capture the actual degradation calculated for THIS lap, to be stored for NEXT lap's LTA.
-            actual_degradation_this_lap = driver_state[
-                "estimated_degradation_s_this_lap"
-            ]
-
-            # 5. Lap Time Agent: Calculate lap time using updated state
-            lap_time_input = {
+            # Tire Manager Agent
+            tire_manager_input = {
                 "circuit_id": self.circuit_name,
-                "driver_id": driver_state["driver_id_code"],
-                "driver_name": driver_state["driver_name"],
-                "team_name": driver_state["team_name"],
-                "compound": driver_state["current_compound"],
-                "tire_age": driver_state["tire_age"],
+                "driver_id": driver_id,
+                "team_id": driver_state_ref.get("team_id_code", "Unknown_Team"),
+                "year": self.state.get("simulation_year", 2024),
                 "weather": self.state["weather"],
-                "degradation_per_lap_s": degradation_affecting_current_lap_time,  # USE CAPTURED VALUE
-                "tire_wear_percentage": driver_state["tire_wear"],
-                "grip_level": driver_state["grip_level"],
-                "SpeedST": driver_state["SpeedST"],
-                "SpeedI1": driver_state["SpeedI1"],
-                "SpeedI2": driver_state["SpeedI2"],
-                "SpeedFL": driver_state["SpeedFL"],
-                "SpeedST_Diff": driver_state["SpeedST_Diff"],
-                "SpeedI1_Diff": driver_state["SpeedI1_Diff"],
-                "SpeedI2_Diff": driver_state["SpeedI2_Diff"],
-                "SpeedFL_Diff": driver_state["SpeedFL_Diff"],
-                "WetTrack": 1 if self.state["weather"].get("rainfall", 0) > 0 else 0,
-                "TrackCondition": 0,
-                "WeatherStability": 1,
-                "WindSpeed_Avg": self.state["weather"].get("wind_speed", 5),
-                "TempDelta": abs(
-                    self.state["weather"].get("track_temp", 25)
-                    - self.state["weather"].get("air_temp", 20)
-                ),
-            }
-            lap_time_result = self.agents["lap_time"].process(lap_time_input)
-
-            # Finalize lap time and update state
-            predicted_laptime = lap_time_result.get("predicted_laptime", 90.0)
-            if pit_decision:
-                predicted_laptime += self.pit_time_penalty
-                driver_state["pit_stops"].append(self.current_lap)
-
-            driver_state["lap_times"].append(predicted_laptime)
-            driver_state["total_race_time"] += predicted_laptime
-
-            # Update driver_state with the degradation from THIS lap, for the NEXT lap's LapTimeAgent
-            driver_state["prev_lap_degradation_s"] = actual_degradation_this_lap
-
-            # Calculate gap effects (dirty air, DRS, fuel load)
-            gap_effects_input = {
-                "gap_to_ahead": driver_state["gap_to_ahead"],
                 "current_lap": self.current_lap,
-                "base_lap_time": predicted_laptime,  # Use initial predicted time
-                "track_characteristics": {
-                    "dirty_air_sensitivity": 1.0,  # Can be customized per track
-                    "drs_effectiveness": 1.0,  # Can be customized per track
-                    "drs_zones": 2,  # Can be customized per track
+                "laps_remaining": self.race_laps - self.current_lap,
+                "is_pit_lap": pit_decision,
+                "compound": new_compound if pit_decision else None,
+                **driver_state_ref,  # Spread the current state
+            }
+            tire_manager_output = self.agents["tire_manager"].process(
+                tire_manager_input
+            )
+            driver_state_ref.update(
+                tire_manager_output
+            )  # Update self.state["drivers"][driver_id]
+
+            # Vehicle Dynamics Agent
+            vehicle_dynamics_input = {
+                "tire_condition": {
+                    "wear": driver_state_ref["tire_wear"],
+                    "grip": driver_state_ref["grip_level"],
+                    "compound": driver_state_ref["current_compound"],
                 },
-                "driver_characteristics": driver_state["characteristics"],
+                "track_state": {
+                    "temperature": self.state["weather"]["track_temp"],
+                    "grip": driver_state_ref[
+                        "track_evolution"
+                    ],  # This was from driver_state
+                    "weather": self.state["weather"],
+                },
+                "car_setup": driver_state_ref.get("car_setup", {}),
+            }
+            dynamics_result = self.agents["vehicle_dynamics"].process(
+                vehicle_dynamics_input
+            )
+            base_laptime = dynamics_result["predicted_lap_time"]
+
+            # Gap Effects Agent
+            gap_effects_input = {
+                "gap_ahead": driver_state_ref.get("gap_ahead", 10.0),
+                "base_lap_time": base_laptime,
+                "track_characteristics": {
+                    "dirty_air_sensitivity": 1.0,
+                    "drs_zones": 2,
+                },
+                "current_lap": self.current_lap,
+                "fuel_load": max(0, 100 - (self.current_lap * 2)),
             }
             gap_effects = self.agents["gap_effects"].process(gap_effects_input)
+            predicted_laptime = base_laptime + gap_effects["lap_time_delta"]
 
-            # Apply gap effects to lap time
-            predicted_laptime += gap_effects["lap_time_delta"]
+            if pit_decision:
+                predicted_laptime += self.pit_time_penalty
+                driver_state_ref["pit_stops"].append(
+                    self.current_lap
+                )  # Update self.state
+                logger.debug(
+                    f"Post-pit tire state: wear={driver_state_ref['tire_wear']:.1f}%, age={driver_state_ref['tire_age']}, compound={driver_state_ref['current_compound']}"
+                )
 
-            # Store data for history with gap effects
-            lap_data_for_history["drivers"][driver_id] = {
-                **driver_state,
-                **lap_time_result,
-                **gap_effects,  # Add gap effects data
-                "lap_time": predicted_laptime,
-                "pit_this_lap": pit_decision,
-                "current_compound": driver_state["current_compound"],
-                "tire_age": driver_state["tire_age"],
-                "tire_wear": driver_state["tire_wear"],
-                "grip_level": driver_state["grip_level"],
-                "total_race_time": driver_state["total_race_time"],
-                "position": driver_state["position"],
-                "SpeedST": driver_state["SpeedST"],
-                "SpeedI1": driver_state["SpeedI1"],
-                "SpeedI2": driver_state["SpeedI2"],
-                "SpeedFL": driver_state["SpeedFL"],
-                "SpeedST_Diff": driver_state["SpeedST_Diff"],
-                "SpeedI1_Diff": driver_state["SpeedI1_Diff"],
-                "SpeedI2_Diff": driver_state["SpeedI2_Diff"],
-                "SpeedFL_Diff": driver_state["SpeedFL_Diff"],
+            # Update total race time & lap times in self.state["drivers"][driver_id]
+            driver_state_ref["lap_times"].append(predicted_laptime)
+            driver_state_ref["total_race_time"] += predicted_laptime
+
+            # Store lap-specific calculated values (not part of core driver_state but needed for history)
+            lap_specific_outputs[driver_id] = {
+                "performance_factors": dynamics_result.get("performance_factors", {}),
+                "gap_effects_details": gap_effects,  # Renamed to avoid clash if gap_effects is also a top-level key
+                "lap_time_calculated": predicted_laptime,  # Renamed to avoid clash with "lap_times" list in state
+                "base_lap_time_calculated": base_laptime,  # Renamed
+                "pit_this_lap_decision": pit_decision,  # Renamed
             }
+            logger.debug(
+                f"Final tire state for {driver_id} after processing: wear={driver_state_ref['tire_wear']:.1f}%, age={driver_state_ref['tire_age']}, compound={driver_state_ref['current_compound']}\\n"
+            )
+
+        # Step 2: All drivers' states (esp. total_race_time) are updated for the current lap.
+        # Now, update their official positions based on these times.
+        self._update_driver_positions()
+
+        # Step 3: Construct lap_data_for_history using the now fully updated self.state["drivers"]
+        # (which includes the correct end-of-lap positions) and the collected lap-specific outputs.
+        lap_data_for_history = {
+            "lap": self.current_lap,
+            "weather": self.state["weather"].copy(),
+            "track_state": self.state["track_state"].copy(),
+            "drivers": {},
+        }
+
+        for driver_id, final_driver_state_ref in self.state["drivers"].items():
+            # final_driver_state_ref is self.state["drivers"][driver_id]
+            # It contains the updated position, total_race_time, tire_wear, etc.
+
+            driver_lap_record = (
+                final_driver_state_ref.copy()
+            )  # Make a copy for the history record
+
+            # Add/overwrite with the specific calculated values for this lap from lap_specific_outputs
+            # These were the values previously spread into the history record directly.
+            lap_calcs = lap_specific_outputs.get(driver_id, {})
+
+            driver_lap_record.update(
+                lap_calcs.get("performance_factors", {})
+            )  # Spread dict
+            driver_lap_record.update(
+                lap_calcs.get("gap_effects_details", {})
+            )  # Spread dict
+            driver_lap_record["lap_time"] = lap_calcs.get(
+                "lap_time_calculated"
+            )  # Specific key for the single lap's time
+            driver_lap_record["base_lap_time"] = lap_calcs.get(
+                "base_lap_time_calculated"
+            )
+            driver_lap_record["pit_this_lap"] = lap_calcs.get("pit_this_lap_decision")
+            # current_compound, tire_age, tire_wear are already in final_driver_state_ref
+
+            lap_data_for_history["drivers"][driver_id] = driver_lap_record
 
         return lap_data_for_history
 

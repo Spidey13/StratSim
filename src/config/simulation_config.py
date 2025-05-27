@@ -20,6 +20,7 @@ DEFAULT_RACE_CONFIG = {
     "year": 2024,
     "weather_condition": "Dry",
     "pit_time_penalty": 20.0,  # seconds
+    "weather_api_key": "f931e470304ac685eca162a8a2ba25c1",  # OpenWeather API key
 }
 
 # Default weather configuration
@@ -106,7 +107,7 @@ def get_default_config(
     # Create driver configurations
     driver_configs = {}
     for driver_id, config in selected_drivers.items():
-        position = config.get("position", 1)
+        position = config.get("position", 0)
         compound = config.get("compound", "MEDIUM")
         driver_configs[driver_id] = create_driver_config(driver_id, position, compound)
 

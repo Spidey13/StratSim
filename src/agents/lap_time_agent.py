@@ -35,7 +35,7 @@ class LapTimeAgent(BaseAgent):
     def __init__(
         self,
         name: str = "LapTimeAgent",
-        model_path: Optional[str] = str(DEFAULT_MODEL_PATH),
+        model_path: str = "models/laptime_xgboost_pipeline_tuned_v2_driver_team.joblib",
         debug_mode: bool = True,
     ):
         """
@@ -48,8 +48,15 @@ class LapTimeAgent(BaseAgent):
             debug_mode: Whether to enable debugging capabilities
         """
         super().__init__(name)
-        self.model_path = model_path
-        self.model = self._load_model(self.model_path) if self.model_path else None
+        self.model = None
+        try:
+            self.model = joblib.load(model_path)
+            logger.info(f"Successfully loaded lap time model from {model_path}")
+            self.use_model = True
+        except Exception as e:
+            logger.error(f"Failed to load lap time model from {model_path}: {str(e)}")
+            logger.warning("Will use fallback prediction method")
+            self.use_model = False
         self.debug_mode = debug_mode
         self.prediction_history = []
         self.feature_importance = {}
@@ -278,7 +285,7 @@ class LapTimeAgent(BaseAgent):
 
         try:
             # Attempt model prediction
-            if self.model:
+            if self.use_model:
                 features = self._prepare_features(inputs)
                 predicted_time = self._model_predict(features)
                 used_model = True
@@ -463,104 +470,101 @@ class LapTimeAgent(BaseAgent):
         Returns:
             Predicted lap time in seconds
         """
-        prediction = self.model.predict(features)[0]
+        try:
+            # Log input features for debugging
+            logger.debug(f"Model input features:\n{features.to_dict()}")
 
-        # Apply bounds to ensure prediction is realistic
-        if prediction < 70:
-            prediction = 70
-        elif prediction > 120:
-            prediction = 120
+            # Get raw prediction from model pipeline (which includes preprocessing)
+            prediction = self.model.predict(features)[0]
 
-        return float(prediction)
+            # Log raw prediction
+            logger.debug(f"Raw model prediction: {prediction:.3f}s")
+
+            # The prediction is already in the correct scale since the pipeline includes
+            # both the preprocessing and the model, so no inverse transform needed
+            return float(prediction)
+
+        except Exception as e:
+            logger.error(f"Model prediction failed: {str(e)}")
+            # If model fails, use fallback with warning
+            logger.warning("Using fallback prediction due to model failure")
+            return self._fallback_prediction(
+                {},  # Empty dict since we're in error state
+                features.get("Driver", ["Unknown"])[0],
+                features.get("Team", ["Unknown"])[0],
+                0.0,  # Default degradation
+                0.0,  # Default wear
+                1.0,  # Default grip
+            )
 
     def _fallback_prediction(
         self,
         inputs: Dict[str, Any],
         driver_name: str,
         team_name: str,
-        degradation_per_lap_s: float,  # NEW PARAMETER
-        tire_wear_percentage: float,  # NEW PARAMETER
-        grip_level: float,  # NEW PARAMETER
+        degradation_per_lap_s: float,
+        tire_wear_percentage: float,
+        grip_level: float,
     ) -> float:
         """
         Fallback prediction method using heuristics when model is unavailable.
-
-        Args:
-            inputs: Input dictionary
-            driver_name: Name of the driver
-            team_name: Name of the team
-            degradation_per_lap_s: Estimated lap time degradation from tire wear this lap (in seconds)
-            tire_wear_percentage: Cumulative tire wear (0-100%)
-            grip_level: Current grip level (0.0-1.0)
-
-        Returns:
-            Estimated lap time in seconds
+        Uses realistic F1 lap times as base values.
         """
-        base_lap_time = 90.0  # Generic base lap time for a dry track
+        # Base lap time around 85 seconds (typical for many F1 circuits)
+        base_lap_time = 85.0
 
         # Adjust for tire compound
         compound = inputs.get("compound", "MEDIUM")
         if compound == "SOFT":
-            base_lap_time -= 1.5
+            base_lap_time -= 0.8  # Soft typically 0.5-1.0s faster
         elif compound == "HARD":
-            base_lap_time += 1.5
+            base_lap_time += 0.8  # Hard typically 0.5-1.0s slower
         elif compound == "INTERMEDIATE":
-            base_lap_time += 7.0  # Penalty for wrong tire on dry track
+            base_lap_time += 4.0  # Significant penalty for wrong tire
         elif compound == "WET":
-            base_lap_time += 15.0  # Penalty for wrong tire on dry track
+            base_lap_time += 8.0  # Major penalty for wrong tire
 
-        # --- Incorporate detailed tire degradation and grip ---
-        # Direct impact of degradation from TireWearAgent
+        # Direct impact of degradation
         base_lap_time += degradation_per_lap_s
 
-        # Impact of overall tire wear percentage (beyond per-lap degradation, reflecting cumulative effect)
-        # Apply a non-linear penalty for higher wear
+        # Impact of tire wear (non-linear)
         if tire_wear_percentage > 70:
-            base_lap_time += (
-                tire_wear_percentage - 70
-            ) * 0.2  # Higher penalty for very high wear
+            base_lap_time += (tire_wear_percentage - 70) * 0.1
         elif tire_wear_percentage > 40:
-            base_lap_time += (
-                tire_wear_percentage - 40
-            ) * 0.1  # Moderate penalty for mid wear
+            base_lap_time += (tire_wear_percentage - 40) * 0.05
 
-        # Impact of grip level: lower grip means slower lap time
-        # Grip level is between 0.0 and 1.0 (1.0 is full grip)
-        # If grip_level is 0.8, it means 20% grip loss. Let's say 20% grip loss adds 1 second.
+        # Impact of grip level
         if grip_level < 1.0:
-            grip_loss_penalty = (
-                1.0 - grip_level
-            ) * 5.0  # Example: 0.1 grip loss = 0.5s penalty
+            grip_loss_penalty = (1.0 - grip_level) * 3.0
             base_lap_time += grip_loss_penalty
-        # --------------------------------------------------------
 
-        # Placeholder for driver/team specific adjustments
+        # Driver/team adjustments (smaller deltas for realism)
         driver_adjustment = 0.0
         if "Hamilton" in driver_name and "Mercedes" in team_name:
-            driver_adjustment = -0.5
-        elif "Verstappen" in driver_name and "Red Bull" in team_name:
-            driver_adjustment = -0.4
-        elif "Leclerc" in driver_name and "Ferrari" in team_name:
             driver_adjustment = -0.3
+        elif "Verstappen" in driver_name and "Red Bull" in team_name:
+            driver_adjustment = -0.3
+        elif "Leclerc" in driver_name and "Ferrari" in team_name:
+            driver_adjustment = -0.2
         elif "Latifi" in driver_name:
-            driver_adjustment = 0.5
+            driver_adjustment = 0.3
 
         team_adjustment = 0.0
         if "Red Bull" in team_name:
-            team_adjustment = -0.3
+            team_adjustment = -0.2
         elif "Mercedes" in team_name:
             team_adjustment = -0.2
         elif "Williams" in team_name:
-            team_adjustment = 0.3
+            team_adjustment = 0.2
 
         base_lap_time += driver_adjustment + team_adjustment
 
-        # Simulate some variability
-        variability = np.random.normal(0, 0.5)
+        # Small random variation (+/- 0.2s)
+        variability = np.random.normal(0, 0.1)
         predicted_time = base_lap_time + variability
 
-        # Apply bounds
-        return max(70.0, min(predicted_time, 150.0))
+        # Keep predictions in realistic range
+        return max(80.0, min(predicted_time, 95.0))
 
     def _determine_factors(
         self,
@@ -568,9 +572,9 @@ class LapTimeAgent(BaseAgent):
         predicted_time: float,
         driver_name: str,
         team_name: str,
-        degradation_per_lap_s: float,  # NEW PARAMETER
-        tire_wear_percentage: float,  # NEW PARAMETER
-        grip_level: float,  # NEW PARAMETER
+        degradation_per_lap_s: float,
+        tire_wear_percentage: float,
+        grip_level: float,
     ) -> List[Dict[str, Any]]:
         """
         Determine key factors influencing the lap time prediction.
@@ -642,13 +646,13 @@ class LapTimeAgent(BaseAgent):
         factors.append({"name": "Circuit", "value": event, "impact": "high"})
 
         # Example: Add driver/team as a factor if they were used in fallback
-        if not self.model:
+        if not self.use_model:
             if "Hamilton" in driver_name:
                 factors.append(
                     {
                         "name": "Driver Skill (Hamilton)",
                         "impact": "Significant positive",
-                        "value": "-0.5s (estimated)",
+                        "value": "-0.3s (estimated)",
                     }
                 )
             if "Red Bull" in team_name:

@@ -25,7 +25,9 @@ class VehicleDynamicsAgent(BaseAgent):
         super().__init__(name)
 
         # Base lap time for a perfectly optimized lap (seconds)
-        self.base_lap_time = 95.0  # Starting point for calculations
+        self.base_lap_time = (
+            80.0  # Starting point for calculations (typical F1 mid-length circuit)
+        )
 
         # Segment time distributions (percentage of lap time)
         self.segment_distribution = {
@@ -34,26 +36,26 @@ class VehicleDynamicsAgent(BaseAgent):
             "S3": 0.34,  # Sector 3 - typically more technical
         }
 
-        # Corner types and their grip sensitivity
+        # Corner types and their grip sensitivity (reduced impact)
         self.corner_sensitivity = {
-            "high_speed": 0.7,  # High speed corners most affected by grip
-            "medium_speed": 0.6,  # Medium speed corners
-            "low_speed": 0.5,  # Low speed corners
-            "straight": 0.3,  # Minimal grip impact on straights
+            "high_speed": 0.4,  # High speed corners most affected by grip
+            "medium_speed": 0.3,  # Medium speed corners
+            "low_speed": 0.2,  # Low speed corners
+            "straight": 0.1,  # Minimal grip impact on straights
         }
 
-        # Minimum sector time multipliers (as percentage of optimal)
+        # Minimum sector time multipliers (tightened range)
         self.min_sector_multiplier = {
-            "S1": 0.75,  # Can't go faster than 75% of base sector time
-            "S2": 0.70,  # Different minimums for different sector types
-            "S3": 0.65,
+            "S1": 0.85,  # Can't go faster than 85% of base sector time
+            "S2": 0.85,  # More consistent across sectors
+            "S3": 0.85,
         }
 
-        # Performance factors
+        # Performance factors (reduced sensitivity)
         self.perf_factors = {
             "tire_temp_optimal": 90.0,  # Optimal tire temp (C)
             "track_temp_optimal": 35.0,  # Optimal track temp (C)
-            "temp_sensitivity": 0.002,  # Performance change per degree from optimal
+            "temp_sensitivity": 0.001,  # Reduced temperature sensitivity
         }
 
     def process(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -160,28 +162,37 @@ class VehicleDynamicsAgent(BaseAgent):
         Calculate tire performance factor based on wear, grip and compound.
         Returns a multiplier where 1.0 is optimal performance.
         """
-        # Base compound performance (peak grip level)
+        # Base compound performance (realistic F1 deltas)
         compound_base = {
-            "SOFT": 1.02,  # Slightly faster than baseline
+            "SOFT": 1.01,  # ~0.8s faster than medium
             "MEDIUM": 1.0,  # Baseline
-            "HARD": 0.98,  # Slightly slower
-            "INTERMEDIATE": 0.95,
-            "WET": 0.90,
+            "HARD": 0.99,  # ~0.8s slower than medium
+            "INTERMEDIATE": 0.90,
+            "WET": 0.85,
         }.get(compound, 1.0)
 
-        # Non-linear wear effect (more impact at higher wear)
-        wear_effect = 1.0 - (wear / 100) ** 1.5
+        # Non-linear wear effect (more gradual impact)
+        wear_effect = 1.0 - (wear / 100) ** 1.2
 
-        # Grip level has exponential impact on performance
-        grip_effect = grip**1.7  # Increased exponent for more pronounced effect
+        # Grip level has linear impact on performance
+        grip_effect = 0.7 + (0.3 * grip)  # Max 30% impact from grip
 
-        # Combine factors with higher weight on grip
-        performance = compound_base * (0.3 * wear_effect + 0.7 * grip_effect)
+        # Combine factors with balanced weighting
+        performance = compound_base * (0.4 * wear_effect + 0.6 * grip_effect)
 
-        # Add cliff effect when wear is very high (>80%)
-        if wear > 80:
-            cliff_factor = 1.0 - ((wear - 80) / 20) ** 2  # Quadratic drop-off
+        # Add cliff effect when wear is very high (>85%)
+        if wear > 85:
+            cliff_factor = 1.0 - ((wear - 85) / 15) ** 1.5  # More gradual drop-off
             performance *= cliff_factor
+
+        # Log detailed calculation
+        logger.debug(
+            f"Tire performance calculation:\n"
+            f"  Compound: {compound} (base: {compound_base:.3f})\n"
+            f"  Wear: {wear:.1f}% (effect: {wear_effect:.3f})\n"
+            f"  Grip: {grip:.3f} (effect: {grip_effect:.3f})\n"
+            f"  Final performance: {performance:.3f}"
+        )
 
         return performance
 
@@ -190,13 +201,26 @@ class VehicleDynamicsAgent(BaseAgent):
     ) -> float:
         """
         Calculate track-related performance factor.
+        Returns a multiplier where 1.0 is optimal performance.
         """
-        # Temperature effect (quadratic falloff from optimal)
+        # Temperature effect (linear falloff from optimal)
         temp_delta = abs(track_temp - self.perf_factors["track_temp_optimal"])
-        temp_effect = 1.0 - (temp_delta * self.perf_factors["temp_sensitivity"]) ** 2
+        temp_effect = max(
+            0.85, 1.0 - (temp_delta * self.perf_factors["temp_sensitivity"])
+        )
 
-        # Combine with track grip (weighted average)
-        return 0.7 * track_grip + 0.3 * temp_effect
+        # Track grip has linear impact (max 20% variation)
+        grip_effect = 0.8 + (0.2 * track_grip)
+
+        # Log detailed calculation
+        logger.debug(
+            f"Track performance calculation:\n"
+            f"  Track temp: {track_temp:.1f}C (delta: {temp_delta:.1f}C, effect: {temp_effect:.3f})\n"
+            f"  Track grip: {track_grip:.3f} (effect: {grip_effect:.3f})"
+        )
+
+        # Combine effects (weighted average favoring grip)
+        return 0.3 * temp_effect + 0.7 * grip_effect
 
     def _calculate_grip_impact(self, grip_level: float, corner_type: str) -> float:
         """
