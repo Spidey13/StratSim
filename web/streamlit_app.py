@@ -184,8 +184,19 @@ def create_simulation_config(
         "year": 2024,
     }
     if use_live_weather:
-        logger.debug("Adding weather API key for live weather data")
-        final_config["weather_api_key"] = "f931e470304ac685eca162a8a2ba25c1"
+        logger.debug(
+            "Attempting to add weather API key for live weather data from st.secrets"
+        )
+        if "OPENWEATHER_API_KEY" in st.secrets:
+            final_config["weather_api_key"] = st.secrets["OPENWEATHER_API_KEY"]
+            logger.info("Successfully loaded OPENWEATHER_API_KEY from st.secrets.")
+        else:
+            logger.warning(
+                "OPENWEATHER_API_KEY not found in st.secrets. Live weather functionality may be impaired or use defaults."
+            )
+            final_config["weather_api_key"] = (
+                None  # Explicitly set to None if not found
+            )
     logger.debug(f"Final simulation config (excluding driver details): {final_config}")
     return final_config
 

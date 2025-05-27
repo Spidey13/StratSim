@@ -20,7 +20,6 @@ DEFAULT_RACE_CONFIG = {
     "year": 2024,
     "weather_condition": "Dry",
     "pit_time_penalty": 20.0,  # seconds
-    "weather_api_key": "f931e470304ac685eca162a8a2ba25c1",  # OpenWeather API key
 }
 
 # Default weather configuration
