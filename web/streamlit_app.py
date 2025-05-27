@@ -370,62 +370,79 @@ def render_setup_and_results_view():
         )
 
     # Tire compound logic
-    options_for_starting_compound_dropdown = (
-        [
-            c
-            for c in TIRE_COMPOUNDS
-            if c
-            in (
-                ["SOFT", "MEDIUM", "HARD"]
-                if weather_condition_input == "Dry"
-                else ["INTERMEDIATE", "WET"]
-            )
-        ]
-        if weather_condition_input == "Dry" or "Rain" in weather_condition_input
-        else TIRE_COMPOUNDS[:]
-    )
-    compounds_for_strategy_during_sim = (
-        [
-            c
-            for c in TIRE_COMPOUNDS
-            if c
-            in (
-                ["SOFT", "MEDIUM", "HARD"]
-                if weather_condition_input == "Dry"
-                else ["INTERMEDIATE", "WET"]
-            )
-        ]
-        if weather_condition_input == "Dry" or "Rain" in weather_condition_input
-        else TIRE_COMPOUNDS[:]
-    )
-
-    # Fallbacks
-    if not compounds_for_strategy_during_sim and TIRE_COMPOUNDS:
+    if weather_mode == "Live Weather":
+        options_for_starting_compound_dropdown = TIRE_COMPOUNDS[:]
         compounds_for_strategy_during_sim = TIRE_COMPOUNDS[:]
-    if not options_for_starting_compound_dropdown and TIRE_COMPOUNDS:
-        options_for_starting_compound_dropdown = [TIRE_COMPOUNDS[0]]
-
-    default_starting_compound_choice = ""
-    if options_for_starting_compound_dropdown:
-        if weather_condition_input == "Dry":
+        if TIRE_COMPOUNDS:
             default_starting_compound_choice = (
-                "MEDIUM"
-                if "MEDIUM" in options_for_starting_compound_dropdown
-                else options_for_starting_compound_dropdown[0]
+                "MEDIUM" if "MEDIUM" in TIRE_COMPOUNDS else TIRE_COMPOUNDS[0]
             )
-        elif "Rain" in weather_condition_input:
-            if "INTERMEDIATE" in options_for_starting_compound_dropdown:
-                default_starting_compound_choice = "INTERMEDIATE"
-            elif "WET" in options_for_starting_compound_dropdown:
-                default_starting_compound_choice = "WET"
-            else:
+        else:
+            default_starting_compound_choice = ""
+    else:  # Preset Weather mode
+        options_for_starting_compound_dropdown = (
+            [
+                c
+                for c in TIRE_COMPOUNDS
+                if c
+                in (
+                    ["SOFT", "MEDIUM", "HARD"]
+                    if weather_condition_input == "Dry"
+                    else ["INTERMEDIATE", "WET"]
+                )
+            ]
+            if weather_condition_input == "Dry" or "Rain" in weather_condition_input
+            else TIRE_COMPOUNDS[:]
+        )
+        compounds_for_strategy_during_sim = (
+            [
+                c
+                for c in TIRE_COMPOUNDS
+                if c
+                in (
+                    ["SOFT", "MEDIUM", "HARD"]
+                    if weather_condition_input == "Dry"
+                    else ["INTERMEDIATE", "WET"]
+                )
+            ]
+            if weather_condition_input == "Dry" or "Rain" in weather_condition_input
+            else TIRE_COMPOUNDS[:]
+        )
+
+        # Fallbacks for preset weather
+        if not compounds_for_strategy_during_sim and TIRE_COMPOUNDS:
+            compounds_for_strategy_during_sim = TIRE_COMPOUNDS[:]
+        if not options_for_starting_compound_dropdown and TIRE_COMPOUNDS:
+            options_for_starting_compound_dropdown = [TIRE_COMPOUNDS[0]]
+
+        default_starting_compound_choice = ""
+        if options_for_starting_compound_dropdown:  # Check if list is not empty
+            if weather_condition_input == "Dry":
+                default_starting_compound_choice = (
+                    "MEDIUM"
+                    if "MEDIUM" in options_for_starting_compound_dropdown
+                    else options_for_starting_compound_dropdown[0]
+                )
+            elif "Rain" in weather_condition_input:
+                if "INTERMEDIATE" in options_for_starting_compound_dropdown:
+                    default_starting_compound_choice = "INTERMEDIATE"
+                elif "WET" in options_for_starting_compound_dropdown:
+                    default_starting_compound_choice = "WET"
+                else:
+                    default_starting_compound_choice = (
+                        options_for_starting_compound_dropdown[0]
+                    )
+            else:  # Should not happen with current WEATHER_CONDITIONS but good for robustness
                 default_starting_compound_choice = (
                     options_for_starting_compound_dropdown[0]
                 )
-        else:
-            default_starting_compound_choice = options_for_starting_compound_dropdown[0]
-    else:
-        default_starting_compound_choice = "MEDIUM"
+        elif TIRE_COMPOUNDS:  # Fallback if options list became empty for some reason
+            default_starting_compound_choice = TIRE_COMPOUNDS[0]
+        # If TIRE_COMPOUNDS is also empty, default_starting_compound_choice remains ""
+
+    # Ensure default_starting_compound_choice is valid, especially if previous logic resulted in an empty string and options are available
+    if not default_starting_compound_choice and options_for_starting_compound_dropdown:
+        default_starting_compound_choice = options_for_starting_compound_dropdown[0]
 
     selected_drivers_config = {}
     with st.expander("👨‍🚀 Driver Configuration", expanded=True):
